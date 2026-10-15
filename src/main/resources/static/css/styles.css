@@ -94,6 +94,11 @@ nav a:hover {
 .center-align{
     text-align: center;
 }
+
+.post-form h3 {
+    margin-left: 8pt;
+}
+
 .post-form textarea {
     width: calc(100% - 16pt);
     padding: 8pt;
@@ -213,3 +218,5 @@ nav a:hover {
 .link {
     margin-left: 16pt;
 }
+
+/* Poll stuff */
