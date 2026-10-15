@@ -7,10 +7,29 @@
             <a href="/profile/{{user.userId}}">{{user.firstName}} {{user.lastName}}</a>
         </div>
         <div class="post-date">{{postDate}}</div>
+        
         <div class="post-content">
-            {{question}}
-            {{choice1}}
-            {{choice2}}
+            <!-- show if the user has voted on the poll -->
+            {{#isVoted}}
+                <h3>Poll Question: {{question}}</h3>
+                <p class="framed">{{choice1}}</p>
+                <p class="framed">{{choice2}}</p>
+                <form method="get" action="/post/{{postId}}/heart/false">
+                    <button class="fa fa-heart"></button>
+            </form>
+            {{/isVoted}}
+            
+            <!-- show if the post is not hearted by the user -->
+            {{^isVoted}}
+                {{question}}
+                {{choice1}}
+                {{choice2}}
+                <form method="get" action="/post/{{postId}}/heart/true">
+                    <button class="far fa-heart"></button>
+                </form>
+            
+            {{/isVoted}}
+            
         </div>
 
 

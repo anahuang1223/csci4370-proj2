@@ -25,7 +25,7 @@ create table if not exists post (
     userId int not null,
     content varchar(255) not null,
     postDate datetime not null default current_timestamp,
-    postType ENUM('NORMAL', 'POLL') not null, --This is to differentiate between Normal Post and a Poll Post
+    postType ENUM('NORMAL', 'POLL') not null, 
     primary key (postId),
     foreign key (userId) references user(userId)
 );

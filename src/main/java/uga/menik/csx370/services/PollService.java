@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import javax.sql.DataSource;
 
@@ -46,38 +47,52 @@ public class PollService {
         final String pollSql = "insert into poll (postId, question, choice1, choice2) values (?, ?, ?, ?)";
         
         try (Connection conn = dataSource.getConnection()) {
-            
-            int postId;
            
-            // Creating Post
-            try (PreparedStatement postStmt = conn.prepareStatement(postSql)) {
-                
+            // Insert into Post
+            try (PreparedStatement postStmt = conn.prepareStatement(postSql, Statement.RETURN_GENERATED_KEYS)) {
                 // Following lines replace the placeholders 1-2 with values userId and question (which is the same as content).
                 postStmt.setString(1, user.getUserId());
                 postStmt.setString(2, question);
                 
-                // Execute the postSQL statement
-                postStmt.executeUpdate();
+                // Execute the Post SQL statement
+                int rowsAffected1 = postStmt.executeUpdate();
+                if (rowsAffected1 == 0) {
+                    throw new SQLException("Failed to create post.");
+                }
+                
+                // Getting the resulting row after the query is executed
                 ResultSet postRes = postStmt.getGeneratedKeys();
                 
-                postId = postRes.getInt("postId");
-                
-                System.out.println("Added new Post: " + postId);
-            
-
-                // Creating Poll
-                try (PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
-                    // Following lines replace the placeholders 1-4 with values postId, question, choice1, choice2.
-                    pollStmt.setInt(1, postId);
-                    pollStmt.setString(2, question);
-                    pollStmt.setString(3, choice1);
-                    pollStmt.setString(4, choice2);
-
-                    // Execute the pollSQL statement
-                    int rowsAffected = pollStmt.executeUpdate();
-                    return rowsAffected > 0;
+                if (postRes.next()) {
                     
+                    // Getting postId from the result set
+                    int postId = postRes.getInt(1);
+                
+                    System.out.println("Added new Post: " + postId);
+                
+                    // Creating Poll
+                    try (PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
+                        // Following lines replace the placeholders 1-4 with values postId, question, choice1, choice2.
+                        pollStmt.setInt(1, postId);
+                        pollStmt.setString(2, question);
+                        pollStmt.setString(3, choice1);
+                        pollStmt.setString(4, choice2);
+
+                        // Execute the Poll SQL statement
+                        int rowsAffected2 = pollStmt.executeUpdate();
+                        if (rowsAffected2 == 0) {
+                            throw new SQLException("Failed to create initial post.");
+                        }
+                        
+                        System.out.println("Poll has been created successfully!");
+                        
+                        return rowsAffected2 > 0;
+                        
+                    }
+                } else {
+                    throw new SQLException();
                 }
+                
             }
         }
 
@@ -86,14 +101,13 @@ public class PollService {
         
 
 
-
     /**
      * Gets total number of votes for a poll.
      */
     public int getTotalVotes(String pollId) throws SQLException {
         int numVotes = 0;
         
-        final String pollSql = "select count(*) from pollvotes where pollId='?'";
+        final String pollSql = "select count(*) from pollvotes where pollId = ?";
         
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
@@ -114,7 +128,7 @@ public class PollService {
     public int getPollVotes1(String pollId) throws SQLException {
         int numVotes = 0;
         
-        final String pollSql = "select count(*) from pollvotes where pollId='?' and choice=1";
+        final String pollSql = "select count(*) from pollvotes where pollId = ? and choice = 1";
         
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
@@ -122,7 +136,7 @@ public class PollService {
             pollStmt.setString(1, pollId);
 
             // Getting the "count" for number of votes for choice 1
-            try (ResultSet rs = pollStmt.executeQuery()) {
+            try (ResultSet rs = pollStmt.executeQuery("Failed to create post.")) {
                 numVotes = rs.getInt("count(*)");
             }
         }  
@@ -135,7 +149,7 @@ public class PollService {
     public int getPollVotes2(String pollId) throws SQLException {
         int numVotes = 0;
         
-        final String pollSql = "select count(*) from pollvotes where pollId='?' and choice=2";
+        final String pollSql = "select count(*) from pollvotes where pollId = ? and choice = 2";
         
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
