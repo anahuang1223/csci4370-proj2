@@ -30,8 +30,8 @@ public class PollController {
     @PostMapping("/createpoll")
     public String createPoll(
         @RequestParam("question") String question,
-        @RequestParam("question") String choice1,
-        @RequestParam("question") String choice2) {
+        @RequestParam("choice1") String choice1,
+        @RequestParam("choice2") String choice2) {
         
             System.out.println("User is creating poll with question: " + question);
             System.out.println("User is creating poll with choice 1: " + choice1);

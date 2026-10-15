@@ -58,14 +58,12 @@ public class PollService {
                 
                 // Execute the postSQL statement
                 postStmt.executeUpdate();
-                ResultSet keys = postStmt.getGeneratedKeys();
+                ResultSet postRes = postStmt.getGeneratedKeys();
                 
-                if (!keys.next()) {
-                    throw new SQLException("Post Creation Failed");
-                } else { 
-                    postId = keys.getInt(1);
-                    System.out.println("Added new Post: " + postId);
-                }
+                postId = postRes.getInt("postId");
+                
+                System.out.println("Added new Post: " + postId);
+            
 
                 // Creating Poll
                 try (PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
@@ -76,22 +74,17 @@ public class PollService {
                     pollStmt.setString(4, choice2);
 
                     // Execute the pollSQL statement
-                    pollStmt.executeUpdate();
-                    ResultSet keys2 = pollStmt.getGeneratedKeys();
+                    int rowsAffected = pollStmt.executeUpdate();
+                    return rowsAffected > 0;
                     
-                    if (!keys2.next()) {
-                        throw new SQLException("Poll Creation Failed");
-                    } else { 
-                        System.out.println("Added new Poll");
-                        return true;
-                    }
                 }
             }
+        }
 
             
-        }
-        
     }
+        
+
 
 
     /**
