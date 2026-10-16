@@ -17,8 +17,6 @@ create table if not exists user (
     constraint firstName_min_length check (char_length(trim(firstName)) >= 2),
     constraint lastName_min_length check (char_length(trim(lastName)) >= 2)
 );
-
-/*
 -- Create the post table.
 create table if not exists post (
     postId int auto_increment,
@@ -51,4 +49,20 @@ create table if not exists pollvote (
     foreign key(userId) references user(userId),
     CHECK (choice in (1,2))
 );
-*/
+
+-- Create the hashtag table.
+create table if not exists hashtag (
+    hashtagId int auto_increment,
+    hashtag varchar(255) not null,
+    primary key (hashtagId),
+    unique (hashtag)
+);
+
+-- Create the relationship between posts and hashtags.
+create table if not exists postHashtag (
+    postId int not null,
+    hashtagId int not null,
+    primary key (postId, hashtagId),
+    foreign key (postId) references post(postId),
+    foreign key (hashtagId) references hashtag(hashtagId)
+);
