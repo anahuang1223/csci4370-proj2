@@ -38,7 +38,11 @@ public class PollController {
             System.out.println("User is creating poll with choice 2: " + choice2);
 
             try {
-                pollService.createPoll(question, choice1, choice2);
+                boolean poll = pollService.createPoll(question, choice1, choice2);
+                if (!poll) {
+                    return "redirect:/?error=Please%20log%20in%20first";
+                }
+                
             } catch (SQLException error) {
                 String message = URLEncoder.encode("Failed to create poll. Please try again.",
                 StandardCharsets.UTF_8);

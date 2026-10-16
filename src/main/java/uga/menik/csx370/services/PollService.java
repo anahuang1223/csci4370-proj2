@@ -99,20 +99,47 @@ public class PollService {
             
     }
         
-
-
     /**
      * Gets total number of votes for a poll.
      */
     public int getTotalVotes(String pollId) throws SQLException {
+        return getVotes(pollId, null);
+    }
+
+    /**
+     * Gets number of users who voted choice 1 for a poll.
+     */
+    public int getChoice1Votes(String pollId) throws SQLException {
+        return getVotes(pollId, 1);
+    }
+
+    /**
+     * Gets number of users who voted choice 2 for a poll.
+     */
+    public int getChoice2Votes(String pollId) throws SQLException {
+        return getVotes(pollId, 2);
+    }
+
+    /**
+     * Returns number of votes for a poll (total, or choice-dependent).
+     */
+    public int getVotes(String pollId, Integer choice) throws SQLException {
         int numVotes = 0;
-        
-        final String pollSql = "select count(*) from pollvotes where pollId = ?";
+        String pollSql;
+        if (choice == null) {
+            pollSql = "select count(*) from pollvotes where pollId = ?";
+        } else {
+            pollSql = "select count(*) from pollvotes where pollId = ? and choice = ?";
+        }
         
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
             // Following lines replace the placeholders 1-4 with values.
             pollStmt.setString(1, pollId);
+
+            if (choice != null) {
+                pollStmt.setInt(2, choice);
+            }
 
             // Getting the "count" for number of votes for choice 1
             try (ResultSet rs = pollStmt.executeQuery()) {
@@ -121,48 +148,5 @@ public class PollService {
         }  
         return numVotes;
     }
-
-    /**
-     * Gets number of votes for choice 1 of a poll.
-     */
-    public int getPollVotes1(String pollId) throws SQLException {
-        int numVotes = 0;
-        
-        final String pollSql = "select count(*) from pollvotes where pollId = ? and choice = 1";
-        
-        try (Connection conn = dataSource.getConnection();
-                PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
-            // Following lines replace the placeholders 1-4 with values.
-            pollStmt.setString(1, pollId);
-
-            // Getting the "count" for number of votes for choice 1
-            try (ResultSet rs = pollStmt.executeQuery("Failed to create post.")) {
-                numVotes = rs.getInt("count(*)");
-            }
-        }  
-        return numVotes;
-    }
-
-    /**
-     * Gets number of votes for choice 2 of a poll.
-     */
-    public int getPollVotes2(String pollId) throws SQLException {
-        int numVotes = 0;
-        
-        final String pollSql = "select count(*) from pollvotes where pollId = ? and choice = 2";
-        
-        try (Connection conn = dataSource.getConnection();
-                PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
-            // Following lines replace the placeholders 1-4 with values.
-            pollStmt.setString(1, pollId);
-
-            // Getting the "count" for number of votes for choice 2
-            try (ResultSet rs = pollStmt.executeQuery()) {
-                numVotes = rs.getInt("count(*)");
-            }
-        }  
-        return numVotes;
-    }
-
 
 }
