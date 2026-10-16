@@ -80,4 +80,14 @@ public class Poll extends Post {
         return voteCount;
     }
 
+    /**
+     * Returns that this is not a poll.
+     * 
+     *
+     */
+    @Override
+    public boolean getIsPoll() {
+        return true;
+    }
+
 }
