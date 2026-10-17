@@ -80,17 +80,29 @@ public class HashtagService {
 
         tagsList.removeIf(str -> "".equals(str));
 
-        // then writing the SQL query
+        // then writing the SQL query:
 
-        String query = "select distinct p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName from post p join user u on p.userId = u.userId where p.postType = 'NORMAL' and p.postId in (";
+        String query = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName from post p join user u on p.userId = u.userId join postHashtag t on p.postId = t.postId join hashtag h on t.hashtagId = h.hashtagId where p.postType = 'NORMAL' and h.hashtag in (";
 
-        String subQuery = "select postId from post p join postHashtag t on p.postId = t.postId join hashtag h on t.hashtagId = h.hashtagId where p.postType = 'NORMAL'";
+        int numTags =  tagsList.size();
 
-        for (String tag : tagsList) {
-            subQuery += " and h.hashtag = ?";
+        // generating required number of ? placeholders for hashtags
+
+        String subQuery = "";
+
+        for (int i=0; i<numTags; i++) {
+            if (i==0) {
+                subQuery += "?";
+            } else {
+                subQuery += ",?";
+            }
         }
 
-        query = query + subQuery + ") order by p.postDate desc;";
+        // using group by so we can count distinct tags and set that equal to the original number of tags searched, that is to say, it is verifying the presence of all tags searched
+
+        String endQuery = String.format(") group by p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName having count(distinct h.hashtag) = %d order by p.postDate desc;", numTags);
+
+        query = query + subQuery + endQuery;
         
         final String finalQuery = query;
 
