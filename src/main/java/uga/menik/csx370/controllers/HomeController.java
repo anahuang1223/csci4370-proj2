@@ -21,6 +21,7 @@ import org.springframework.web.servlet.ModelAndView;
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.services.PostService;
 import uga.menik.csx370.utility.Utility;
+import uga.menik.csx370.services.UserService;
 
 /**
  * This controller handles the home page and some of it's sub URLs.
@@ -30,43 +31,90 @@ import uga.menik.csx370.utility.Utility;
 public class HomeController {
 
     private final PostService postService;
+    private final UserService userService;
 
     @Autowired
-    public HomeController(PostService postService) {
+    public HomeController(PostService postService,
+        UserService userService) {
+
         this.postService = postService;
+        this.userService = userService;
     }
 
-    /**
-     * This is the specific function that handles the root URL itself.
+   /**
+     * Displays the home page.
      *
-     * Note that this accepts a URL parameter called error.
-     * The value to this parameter can be shown to the user as an error message.
-     * See notes in HashtagSearchController.java regarding URL parameters.
+     * The home feed contains the logged-in user's own posts and
+     * posts from users that they follow, ordered newest to oldest.
+     *
+     * @param error optional error message passed through the URL
+     * @return home page and its post data
      */
     @GetMapping
     public ModelAndView webpage(@RequestParam(name = "error", required = false) String error) {
 
         ModelAndView mv = new ModelAndView("home_page");
 
-        // Still using sample posts for now.
-        // We will replace this with database-backed home feed logic later.
-        List<Post> posts = Utility.createSamplePostsListWithoutComments();
-        mv.addObject("posts", posts);
+       
+        try {
+            
+            // Get the ID of the user currently logged into the application.
+            String loggedInUserId =
+                    userService.getLoggedInUser().getUserId();
 
-        String errorMessage = error;
-        mv.addObject("errorMessage", errorMessage);
+            /*
+             * Retrieve the user's home feed from the database.
+             * This includes the user's own posts and posts from
+             * users they follow.
+             */
+            List<Post> posts =
+                    postService.getHomeFeed(loggedInUserId);
+
+            mv.addObject("posts", posts);
+
+            // Show the no-content message if the feed is empty.
+            if (posts.isEmpty()) {
+                mv.addObject("isNoContent", true);
+            }
+
+        } catch (SQLException e) {
+
+            e.printStackTrace();
+
+            mv.addObject(
+                    "errorMessage",
+                    "Failed to load posts."
+            );
+        }
+
+        /*
+         * If an error message was included in the URL,
+         * make it available to the home page template.
+         */
+        if (error != null) {
+            mv.addObject(
+                    "errorMessage",
+                    error);
+        }
 
         return mv;
     }
 
-    /**
-     * Handles creation of a normal post.
+     /**
+     * Creates a normal post submitted from the home page.
+     *
+     * @param postText text entered by the user
+     * @return redirect back to the home page
      */
     @PostMapping("/createpost")
     public String createPost(@RequestParam(name = "posttext") String postText) {
 
         try {
 
+            /*
+             * PostService validates and stores the post along
+             * with any hashtags contained in the post text.
+             */
             boolean success = postService.createPost(postText);
 
             if (success) {
@@ -77,6 +125,10 @@ public class HomeController {
             e.printStackTrace();
         }
 
+        /*
+         * Redirect back to the home page with an error message
+         * if the post could not be created.
+         */
         String message = URLEncoder.encode(
                 "Failed to create the post. Please try again.",
                 StandardCharsets.UTF_8

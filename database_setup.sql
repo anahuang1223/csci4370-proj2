@@ -66,3 +66,13 @@ create table if not exists postHashtag (
     foreign key (postId) references post(postId),
     foreign key (hashtagId) references hashtag(hashtagId)
 );
+
+-- Create the follow relationship between users.
+create table if not exists follow (
+    followerId int not null,
+    followedId int not null,
+    primary key (followerId, followedId),
+    foreign key (followerId) references user(userId),
+    foreign key (followedId) references user(userId),
+    check (followerId <> followedId)
+);
