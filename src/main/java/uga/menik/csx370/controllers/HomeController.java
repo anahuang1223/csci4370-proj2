@@ -65,8 +65,7 @@ public class HomeController {
              * This includes the user's own posts and posts from
              * users they follow.
              */
-            List<Post> posts =
-                    postService.getHomeFeed(loggedInUserId);
+            List<Post> posts = postService.getHomeFeed(loggedInUserId);
 
             mv.addObject("posts", posts);
 
