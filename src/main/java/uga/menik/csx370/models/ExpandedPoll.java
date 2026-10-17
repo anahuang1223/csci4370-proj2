@@ -16,6 +16,7 @@ public class ExpandedPoll extends Poll {
 
         super(pollId, postId, content, choice1, choice2, postDate, heartsCount, commentsCount, isHearted, isBookmarked, user, voteCount, choice1Votes, choice2Votes, hasVoted);
         this.comments = comments;
+        this.isShowComents = true;
     }
 
     /**
@@ -23,6 +24,6 @@ public class ExpandedPoll extends Poll {
      * @return list of comments for a poll
      */
     public List<Comment> getComments() {
-        return comments;
+        return List.copyOf(comments);
     }
 }

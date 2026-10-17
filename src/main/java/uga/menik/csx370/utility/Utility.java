@@ -107,10 +107,11 @@ public class Utility {
         commentsForPoll.add(new Comment("3", "Isn't obvious?", 
             "Mar 09, 2026, 09:30 AM", user4));
         
-
+        
         List<ExpandedPoll> pollsWithComments = new ArrayList<>();
-        pollsWithComments.add(new ExpandedPoll("2", "11", "Is it a spade or a shovel?", 
-                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 0, 0, false, false, user1, 0, 0, 0, false, commentsForPoll));
+        pollsWithComments.add(new ExpandedPoll("20", "15", "Is it a spade or a shovel?", 
+                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 
+                0, 0, false, false, user1, 0, 0, 0, false, commentsForPoll));
         
         
         return pollsWithComments;

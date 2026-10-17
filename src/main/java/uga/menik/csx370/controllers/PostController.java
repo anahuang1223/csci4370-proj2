@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.models.ExpandedPost;
+import uga.menik.csx370.models.ExpandedPoll;
 import uga.menik.csx370.utility.Utility;
 
 /**
@@ -46,7 +47,7 @@ public class PostController {
 
         // Following line populates sample data.
         // You should replace it with actual data from the database.
-        List<ExpandedPost> posts = Utility.createSampleExpandedPostWithComments();
+        List<ExpandedPoll> posts = Utility.createSamplePollsListWithComments();
         mv.addObject("posts", posts);
 
         // If an error occured, you can set the following property with the
