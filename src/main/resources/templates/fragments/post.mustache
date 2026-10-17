@@ -13,7 +13,7 @@ This is a project developed by Dr. Menik to give the students an opportunity to 
         
         {{#isPoll}}
             <div class="post-content">
-                <p>Poll Question: {{content}}</p>
+                <p>{{content}}</p>
 
                 <form method="post" action="/poll/vote" class="poll-choices">
                     <input type="hidden" name="pollId" value="{{pollId}}">
