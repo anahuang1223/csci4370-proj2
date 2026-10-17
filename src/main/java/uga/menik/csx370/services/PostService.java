@@ -22,6 +22,9 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import uga.menik.csx370.services.PollService;
+
+import uga.menik.csx370.models.Poll;
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.models.User;
 
@@ -36,6 +39,7 @@ public class PostService {
 
     private final DataSource dataSource;
     private final UserService userService;
+    private final PollService pollService;
 
     /**
      * Creates a PostService using the application's database connection
@@ -45,12 +49,11 @@ public class PostService {
      * @param userService service used to access the logged-in user
      */
     @Autowired
-    public PostService(
-            DataSource dataSource,
-            UserService userService) {
+    public PostService(DataSource dataSource, UserService userService, PollService pollService) {
 
         this.dataSource = dataSource;
         this.userService = userService;
+        this.pollService = pollService;
     }
 
     /**
@@ -361,7 +364,6 @@ public class PostService {
                 "from post p " +
                 "join user u on p.userId = u.userId " +
                 "where p.userId = ? " +
-                "and p.postType = 'NORMAL' " +
                 "order by p.postDate desc";
 
         try (Connection conn =
@@ -450,9 +452,14 @@ public class PostService {
                 "p.postDate, " +
                 "u.userId, " +
                 "u.firstName, " +
-                "u.lastName " +
+                "u.lastName, " +
+                "p.postType, " +
+                "po.pollId, " +
+                "po.choice1, " +
+                "po.choice2 " +
                 "from post p " +
                 "join user u on p.userId = u.userId " +
+                "left join poll po on po.postId = p.postId " +
                 "where (" +
                 "    p.userId = ? " +
                 "    or exists (" +
@@ -462,7 +469,6 @@ public class PostService {
                 "        and f.followedId = p.userId" +
                 "    )" +
                 ") " +
-                "and p.postType = 'NORMAL' " +
                 "order by p.postDate desc";
 
         try (Connection conn =
@@ -489,28 +495,45 @@ public class PostService {
 
                 while (rs.next()) {
 
-                    User user =
-                            new User(
-                                    rs.getString("userId"),
-                                    rs.getString("firstName"),
-                                    rs.getString("lastName")
-                            );
+                        User user =
+                                new User(
+                                        rs.getString("userId"),
+                                        rs.getString("firstName"),
+                                        rs.getString("lastName")
+                                );
+                        if (rs.getString("postType").equals("POLL")) {
+                                Post post = new Poll(
+                                        rs.getString("pollId"),
+                                        rs.getString("postId"),
+                                        rs.getString("content"),
+                                        rs.getString("choice1"),
+                                        rs.getString("choice2"),
+                                        formatPostDate(rs.getTimestamp("postDate")),
+                                        0,
+                                        0,
+                                        false,
+                                        false,
+                                        user,
+                                        pollService.getTotalVotes(rs.getString("pollId"))
+                                );
+                                posts.add(post);
+                        } else {
+                                Post post =
+                                        new Post(
+                                                rs.getString("postId"),
+                                                rs.getString("content"),
+                                                formatPostDate(
+                                                        rs.getTimestamp(
+                                                                "postDate")),
+                                                user,
+                                                0,
+                                                0,
+                                                false,
+                                                false
+                                        );
 
-                    Post post =
-                            new Post(
-                                    rs.getString("postId"),
-                                    rs.getString("content"),
-                                    formatPostDate(
-                                            rs.getTimestamp(
-                                                    "postDate")),
-                                    user,
-                                    0,
-                                    0,
-                                    false,
-                                    false
-                            );
-
-                    posts.add(post);
+                                posts.add(post);
+                        }
                 }
             }
         }
