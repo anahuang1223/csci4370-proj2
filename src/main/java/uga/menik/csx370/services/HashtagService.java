@@ -139,9 +139,14 @@ public class HashtagService {
                         String firstName = rs.getString("firstName");
                         String lastName = rs.getString("lastName");
                         User user = new User(userId, firstName, lastName);
+                        Integer totalVotes = pollService.getTotalVotes(rs.getString("pollId"));
+                        Integer choice1Votes = pollService.getChoice1Votes(rs.getString("pollId"));
+                        Integer choice2Votes = pollService.getChoice2Votes(rs.getString("pollId"));
+
+                        boolean hasVoted = pollService.getHasVoted(pollId);
                         
                         posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
-                            user, pollService.getTotalVotes(rs.getString("pollId"))));
+                            user, totalVotes, choice1Votes, choice2Votes, hasVoted));
                     } else {
                         System.out.println("Getting a post for hashtag!");
                         String postId = rs.getString("postId");
