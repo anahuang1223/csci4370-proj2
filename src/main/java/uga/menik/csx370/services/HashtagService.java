@@ -16,15 +16,14 @@ import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
 
 import javax.sql.DataSource;
-import javax.xml.crypto.Data;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 import org.springframework.stereotype.Service;
 
 import uga.menik.csx370.models.Post;
-import uga.menik.csx370.utility.Utility;
+import uga.menik.csx370.models.User;
+
 
 /**
  * This service contains hashtag search bar related functions.
@@ -88,15 +87,17 @@ public class HashtagService {
         String subQuery = "select postId from post p join postHashtag t on p.postId = t.postId join hashtag h on t.hashtagId = h.hashtagId where p.postType = 'NORMAL'";
 
         for (String tag : tagsList) {
-            subQuery += " and h.hashtagId = ?";
+            subQuery += " and h.hashtag = ?";
         }
 
-        final String finalQuery = query + subQuery + ") order by p.postDate desc;";
+        query = query + subQuery + ") order by p.postDate desc;";
+        
+        final String finalQuery = query;
 
         // Running the query with a datasource
 
         try (Connection conn = dataSource.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(query)) {
+                PreparedStatement pstmt = conn.prepareStatement(finalQuery)) {
 
             int i = 1;
 
@@ -105,7 +106,8 @@ public class HashtagService {
                 i++;
             }
 
-            System.out.println("(DEBUG) Querying Hashtags: " + pstmt.toString());
+            // print final query to console for debugging
+            System.out.println("(DEBUG) Final Query: " + pstmt.toString());
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
@@ -120,7 +122,7 @@ public class HashtagService {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("SQL querying error");
+            System.out.println("SQL querying error" + e.getMessage());
         }
 
         return posts;
