@@ -26,6 +26,15 @@ public class PollVote {
         
     }
 
-    
+    /**
+     * Returns a specific user's choice on a given poll.
+     * 
+     * @param pollId
+     * @param user
+     * @return userChoice
+     */
+    public int getUserChoice(String pollId, User user) {
+        return userChoice;
+    }
     
 }

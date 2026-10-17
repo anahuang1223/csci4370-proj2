@@ -52,7 +52,7 @@ public class PollService {
 
         // SQL statements for inserting into Post and Poll
         final String postSql = "insert into post(userId, content, postType) values (?, ?, 'POLL')";
-        final String pollSql = "insert into poll (postId, question, choice1, choice2) values (?, ?, ?, ?)";
+        final String pollSql = "insert into poll(postId, question, choice1, choice2) values (?, ?, ?, ?)";
         
         try (Connection conn = dataSource.getConnection()) {
            
@@ -111,6 +111,153 @@ public class PollService {
         }
 
             
+    }
+
+    /**
+     * Inserts a new vote to a certain poll in pollvote.
+     * @param pollId
+     * @param choice
+     * @return
+     * @throws SQLException
+     */
+    public boolean createVote(String pollId, String choice) throws SQLException {
+        User user = userService.getLoggedInUser();
+        
+        if (user == null) {
+            return false;
+        } 
+
+        final String voteSQL = "insert into pollvote (pollId, userId, choice) values (?, ?, ?)";
+        try (Connection conn = dataSource.getConnection()) {
+           
+            // Insert into pollvote
+            try (PreparedStatement voteStmt = conn.prepareStatement(voteSQL, Statement.RETURN_GENERATED_KEYS)) {
+                // Following lines replace the placeholders 1-2 with values userId and question (which is the same as content).
+                voteStmt.setString(1, pollId);
+                voteStmt.setString(2, user.getUserId());
+                voteStmt.setString(3, choice);
+                
+                // Executes the insert statement
+                int rowsAffected = voteStmt.executeUpdate();
+
+                // Getting the resulting row after the query is executed
+
+                return rowsAffected > 0;
+            }
+        }
+
+    }
+
+
+    /**
+     * Updates a user's choice in a certain poll in pollvote. If they click the one they chose, it removes it from database.
+     * @param pollId
+     * @param choice
+     * @return
+     * @throws SQLException
+     */
+    public boolean updateVote(String pollId, String choice) throws SQLException {
+        User user = userService.getLoggedInUser();
+        
+        if (user == null) {
+            return false;
+        } 
+
+        // Used to check if the vote is the same or not
+        final String checkSQL = "select * from pollvote where pollId=? and userId=?";
+
+        // Used to delete a vote if user clicks on the choice they made originally
+        final String deleteSQL = "delete from pollvote where pollId=? and userId=?";
+
+        // Used to update a vote if user clicks a different choice
+        final String voteSQL = "update pollvote set choice=? where pollId = ? and userId = ?";
+        
+        try (Connection conn = dataSource.getConnection()) {
+            
+            // Checking if choices are the same
+            try (PreparedStatement checkVoteStmt = conn.prepareStatement(checkSQL, Statement.RETURN_GENERATED_KEYS)) {
+                
+                checkVoteStmt.setString(1, pollId);
+                checkVoteStmt.setString(2, user.getUserId());
+
+                ResultSet checkRes = checkVoteStmt.executeQuery();
+
+                // If the choice from database is the same as the new choice, delete the row from database
+                if (checkRes.next() && checkRes.getString(3).equals(choice)) {
+                    System.out.println("Deleting this row");
+
+                    // Update row in pollvote
+                    try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSQL, Statement.RETURN_GENERATED_KEYS)) {
+                        // Following lines replace the placeholders 1-2 with values pollId and user 
+                        deleteStmt.setString(1, pollId);
+                        deleteStmt.setString(2, user.getUserId());
+                        
+                        // Executes the delete statement
+                        int rowsAffected = deleteStmt.executeUpdate();
+
+                        return rowsAffected > 0;
+                    }
+                    
+                } else {
+                    
+                    // Updates row in pollvote if the choice is different
+                    try (PreparedStatement voteStmt = conn.prepareStatement(voteSQL, Statement.RETURN_GENERATED_KEYS)) {
+                        // Following lines replace the placeholders 1-3 with values choice, pollId, user
+                        voteStmt.setString(1, choice);
+                        voteStmt.setString(2, pollId);
+                        voteStmt.setString(3, user.getUserId());
+                        
+                        // Executes the update statement
+                        int rowsAffected = voteStmt.executeUpdate();
+
+                        return rowsAffected > 0;
+                    }
+                }
+
+                
+            
+            }
+
+            
+        }
+
+    }
+
+    /**
+     * Returns whether the current user has voted or not on a specific poll.
+     * @param pollId
+     * @return true if current user has voted on the poll
+     * @throws SQLException
+     */
+    public boolean getHasVoted(String pollId) throws SQLException {
+        User user = userService.getLoggedInUser();
+        
+        if (user == null) {
+            return false;
+        } 
+
+        final String voteSQL = "select * from pollvote where pollId = ? and userId = ?";
+
+        try (Connection conn = dataSource.getConnection()) {
+           
+            // Update row in pollvote
+            try (PreparedStatement voteStmt = conn.prepareStatement(voteSQL, Statement.RETURN_GENERATED_KEYS)) {
+                // Following lines replace the placeholders 1-2 with values userId and question (which is the same as content).
+                voteStmt.setString(1, pollId);
+                voteStmt.setString(2, user.getUserId());
+                
+                // Executes the update statement
+                ResultSet voteRes = voteStmt.executeQuery();
+
+                // If no rows selected, return false
+                if (!voteRes.next()) {
+                    return false;
+                } 
+                // Else return true
+                return true;
+            }
+        }
+
     }
         
     /**

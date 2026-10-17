@@ -15,20 +15,43 @@ This is a project developed by Dr. Menik to give the students an opportunity to 
             <div class="post-content">
                 <p>{{content}}</p>
 
-                <form method="post" action="/poll/vote" class="poll-choices">
-                    <input type="hidden" name="pollId" value="{{pollId}}">
+                <!-- If current user has voted on a poll: show this-->
+                {{#hasVoted}}
+                    <form method="post" action="/changevote" class="poll-choices">
+                        <input type="hidden" name="pollId" value="{{pollId}}">
 
-                    <button type="submit" name="choice" value="1"
-                            class="action-button poll-choice-button">
-                        {{choice1}}
-                    </button>
+                        <button type="submit" name="choice" value="1"
+                                class="action-button poll-choice-button">
+                            <span>{{choice1}}</span>
+                            <span>{{choice1Votes}}</span>
+                        </button>
 
-                    <button type="submit" name="choice" value="2"
-                            class="action-button poll-choice-button">
-                        {{choice2}}
-                    </button>
-                </form>
+                        <button type="submit" name="choice" value="2"
+                                class="action-button poll-choice-button">
+                            <span>{{choice2}}</span>
+                            <span>{{choice2Votes}}</span>
+                        </button>
+                    </form>
+                {{/hasVoted}}
+                
+                <!-- If current user has not voted on a poll: show this-->
+                {{^hasVoted}}
+                    <form method="post" action="/vote" class="poll-choices">
+                        <input type="hidden" name="pollId" value="{{pollId}}">
 
+                        <button type="submit" name="choice" value="1"
+                                class="action-button poll-choice-button">
+                            <span>{{choice1}}</span>
+                            <span></span>
+                        </button>
+
+                        <button type="submit" name="choice" value="2"
+                                class="action-button poll-choice-button">
+                            <span>{{choice2}}</span>
+                            <span></span>
+                        </button>
+                    </form>
+                {{/hasVoted}}
                 <p>Total votes: {{voteCount}}</p>
             </div>
         {{/isPoll}}

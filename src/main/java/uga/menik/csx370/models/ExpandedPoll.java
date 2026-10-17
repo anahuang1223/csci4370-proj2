@@ -12,9 +12,9 @@ public class ExpandedPoll extends Poll {
     private List<Comment> comments;
 
     public ExpandedPoll(String pollId, String postId, String content, String choice1, String choice2, String postDate,
-            int heartsCount, int commentsCount, boolean isHearted, boolean isBookmarked, User user, int voteCount, List<Comment> comments) {
+            int heartsCount, int commentsCount, boolean isHearted, boolean isBookmarked, User user, int voteCount, int choice1Votes, int choice2Votes, boolean hasVoted, List<Comment> comments) {
 
-        super(pollId, postId, content, choice1, choice2, postDate, heartsCount, commentsCount, isHearted, isBookmarked, user, voteCount);
+        super(pollId, postId, content, choice1, choice2, postDate, heartsCount, commentsCount, isHearted, isBookmarked, user, voteCount, choice1Votes, choice2Votes, hasVoted);
         this.comments = comments;
     }
 

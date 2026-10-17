@@ -290,15 +290,27 @@ public class PostService {
                     
                     // Adds posts or polls depending on postType
                     if (rs.getString("postType").equals("POLL")) {
-                        Post post = new Poll(rs.getString("pollId"), rs.getString("postId"),rs.getString("content"), rs.getString("choice1"),
-                            rs.getString("choice2"), formatPostDate(rs.getTimestamp("postDate")), 0, 0, false, false,
-                            user, pollService.getTotalVotes(rs.getString("pollId"))
-                        );
-                        posts.add(post);
-                    } else {
-                        Post post = new Post(rs.getString("postId"), rs.getString("content"), formatPostDate(rs.getTimestamp("postDate")),
-                            user, 0, 0, false, false);
+                        String pollId = rs.getString("pollId");
+                        String postId = rs.getString("postId");
+                        String content = rs.getString("content");
+                        String choice1 = rs.getString("choice1");
+                        String choice2 = rs.getString("choice2");
+                        Timestamp postDate = rs.getTimestamp("postDate");
+                        Integer totalVotes = pollService.getTotalVotes(rs.getString("pollId"));
+                        Integer choice1Votes = pollService.getChoice1Votes(rs.getString("pollId"));
+                        Integer choice2Votes = pollService.getTotalVotes(rs.getString("pollId"));
 
+                        boolean hasVoted = pollService.getHasVoted(pollId);
+                        
+                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
+                            user, totalVotes, choice1Votes, choice2Votes, hasVoted));
+                    } else {
+                        String postId = rs.getString("postId");
+                        String content = rs.getString("content");
+                        Timestamp postDate = rs.getTimestamp("postDate");
+                        Post post = new Post(postId, content, formatPostDate(postDate),
+                            user, 0, 0, false, false
+                        );
                         posts.add(post);
                     }
                 }
@@ -330,9 +342,9 @@ public class PostService {
          * connecting the logged-in user to the post's author.
          */
         final String sql = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName, p.postType, po.pollId, po.choice1, po.choice2 " +
-                "from post p join user u on p.userId = u.userId left join poll po on po.postId = p.postId " +
-                "where (p.userId = ? or exists (select 1 from follow f where f.followerId = ? and f.followedId = p.userId)) " +
-                "order by p.postDate desc";
+            "from post p join user u on p.userId = u.userId left join poll po on po.postId = p.postId " +
+            "where (p.userId = ? or exists (select 1 from follow f where f.followerId = ? and f.followedId = p.userId)) " +
+            "order by p.postDate desc";
 
         try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -352,11 +364,20 @@ public class PostService {
                     
                     // Checks if postType is a POLL or a NORMAL post. Adds correct version to posts list.
                     if (rs.getString("postType").equals("POLL")) {
-                        Post post = new Poll(rs.getString("pollId"), rs.getString("postId"),rs.getString("content"), rs.getString("choice1"),
-                            rs.getString("choice2"), formatPostDate(rs.getTimestamp("postDate")), 0, 0, false, false,
-                            user, pollService.getTotalVotes(rs.getString("pollId"))
-                        );
-                        posts.add(post);
+                        String pollId = rs.getString("pollId");
+                        String postId = rs.getString("postId");
+                        String content = rs.getString("content");
+                        String choice1 = rs.getString("choice1");
+                        String choice2 = rs.getString("choice2");
+                        Timestamp postDate = rs.getTimestamp("postDate");
+                        Integer totalVotes = pollService.getTotalVotes(pollId);
+                        Integer choice1Votes = pollService.getChoice1Votes(pollId);
+                        Integer choice2Votes = pollService.getChoice2Votes(pollId);
+
+                        boolean hasVoted = pollService.getHasVoted(pollId);
+                        
+                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
+                            user, totalVotes, choice1Votes, choice2Votes, hasVoted));
 
                     } else {
                         Post post = new Post(rs.getString("postId"),rs.getString("content"),formatPostDate(rs.getTimestamp("postDate")),
