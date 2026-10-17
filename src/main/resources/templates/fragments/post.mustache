@@ -13,9 +13,9 @@ This is a project developed by Dr. Menik to give the students an opportunity to 
         
         {{#isPoll}}
             <div class="post-content">
-                <p>{{content}}</p>
+                <p>Poll Question: {{content}}</p>
 
-                <form method="post" action="/poll/vote class="poll-choices">
+                <form method="post" action="/poll/vote" class="poll-choices">
                     <input type="hidden" name="pollId" value="{{pollId}}">
 
                     <button type="submit" name="choice" value="1"
