@@ -250,9 +250,9 @@ nav a:hover {
     margin-bottom: 12px;
 }
 
-/* Popup for Create Post and Create Poll */
+/* Popup Modals for Create Post and Create Poll */
 
-/* Darkens background behind forms */
+/* Darkens the background behind forms when popup appears */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -265,7 +265,6 @@ nav a:hover {
     background-color: rgba(0, 0, 0, 0.65);
     visibility: hidden;
     opacity: 0;
-    pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
@@ -285,7 +284,6 @@ nav a:hover {
     max-height: 75vh;
     overflow-y: auto;
     box-sizing: border-box;
-
     padding: 32px;
     background-color: #fff;
     border-radius: 8px;
@@ -324,7 +322,6 @@ nav a:hover {
     position: absolute;
     top: 12px;
     right: 16px;
-
     color: var(--action-item-color);
     text-decoration: none;
     font-size: 22px;

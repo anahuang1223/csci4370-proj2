@@ -9,7 +9,7 @@ public class PollVote {
     /* The user who responded to a specific poll. */
     private User user;
 
-    /* The choice the a user made on a specific poll.*/
+    /* The choice a user made on a specific poll.*/
     private int userChoice;
 
     /**

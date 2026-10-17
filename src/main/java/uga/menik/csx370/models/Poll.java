@@ -19,7 +19,7 @@ public class Poll extends Post {
     private int voteCount;
 
     /**
-     * Constructs a Poll with question, choices, date, and user.
+     * Constructs a Poll with question, choices, and user.
      *
      * @param pollId        the unique identifier of the poll
      * @param postId        the associated id of the poll
@@ -81,9 +81,10 @@ public class Poll extends Post {
     }
 
     /**
-     * Returns that this is not a poll.
+     * Returns that this is not a poll. This is here because post.mustache
+     * needs to differentiate between polls and posts.
      * 
-     *
+     * @return that this is a poll 
      */
     @Override
     public boolean getIsPoll() {

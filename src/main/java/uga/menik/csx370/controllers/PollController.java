@@ -6,12 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.services.PollService;
 
@@ -40,7 +36,7 @@ public class PollController {
             try {
                 boolean poll = pollService.createPoll(question, choice1, choice2);
                 if (!poll) {
-                    return "redirect:/?error=Please%20log%20in%20first";
+                    throw new SQLException();
                 }
                 
             } catch (SQLException error) {

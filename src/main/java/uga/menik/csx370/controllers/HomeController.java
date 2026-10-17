@@ -55,12 +55,10 @@ public class HomeController {
 
         ModelAndView mv = new ModelAndView("home_page");
 
-       
         try {
             
             // Get the ID of the user currently logged into the application.
-            String loggedInUserId =
-                    userService.getLoggedInUser().getUserId();
+            String loggedInUserId = userService.getLoggedInUser().getUserId();
 
             /*
              * Retrieve the user's home feed from the database.
@@ -81,10 +79,7 @@ public class HomeController {
 
             e.printStackTrace();
 
-            mv.addObject(
-                    "errorMessage",
-                    "Failed to load posts."
-            );
+            mv.addObject("errorMessage", "Failed to load posts.");
         }
 
         /*
@@ -92,9 +87,7 @@ public class HomeController {
          * make it available to the home page template.
          */
         if (error != null) {
-            mv.addObject(
-                    "errorMessage",
-                    error);
+            mv.addObject("errorMessage", error);
         }
 
         return mv;
@@ -129,10 +122,7 @@ public class HomeController {
          * Redirect back to the home page with an error message
          * if the post could not be created.
          */
-        String message = URLEncoder.encode(
-                "Failed to create the post. Please try again.",
-                StandardCharsets.UTF_8
-        );
+        String message = URLEncoder.encode("Failed to create the post. Please try again.",StandardCharsets.UTF_8);
 
         return "redirect:/?error=" + message;
     }

@@ -10,7 +10,6 @@ import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.annotation.SessionScope;
 
 import uga.menik.csx370.models.User;
 
@@ -54,7 +53,7 @@ public class PollService {
                 postStmt.setString(1, user.getUserId());
                 postStmt.setString(2, question);
                 
-                // Execute the Post SQL statement
+                // Executes the Post SQL statement
                 int rowsAffected1 = postStmt.executeUpdate();
                 if (rowsAffected1 == 0) {
                     throw new SQLException("Failed to create post.");
@@ -78,7 +77,7 @@ public class PollService {
                         pollStmt.setString(3, choice1);
                         pollStmt.setString(4, choice2);
 
-                        // Execute the Poll SQL statement
+                        // Executes the Poll SQL statement
                         int rowsAffected2 = pollStmt.executeUpdate();
                         if (rowsAffected2 == 0) {
                             throw new SQLException("Failed to create initial post.");
@@ -126,6 +125,8 @@ public class PollService {
     public int getVotes(String pollId, Integer choice) throws SQLException {
         int numVotes = 0;
         String pollSql;
+
+        // If choice is given, then it selects only votes that correspond with that choice
         if (choice == null) {
             pollSql = "select count(*) from pollvote where pollId = ?";
         } else {
@@ -134,14 +135,15 @@ public class PollService {
         
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement pollStmt = conn.prepareStatement(pollSql)) {
-            // Following lines replace the placeholders 1-4 with values.
+            
+            // Following lines replace the placeholders with values.
             pollStmt.setString(1, pollId);
 
             if (choice != null) {
                 pollStmt.setInt(2, choice);
             }
 
-            // Getting the "count" for number of votes for choice 1
+            // Executes query
             try (ResultSet rs = pollStmt.executeQuery()) {
                 if (!rs.next()) {
                     return 0;
