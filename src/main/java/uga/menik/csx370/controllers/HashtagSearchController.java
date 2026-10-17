@@ -7,6 +7,7 @@ package uga.menik.csx370.controllers;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.models.Post;
-import uga.menik.csx370.utility.Utility;
+import uga.menik.csx370.services.HashtagService;
 
 /**
  * Handles /hashtagsearch URL and possibly others.
@@ -23,6 +24,13 @@ import uga.menik.csx370.utility.Utility;
 @Controller
 @RequestMapping("/hashtagsearch")
 public class HashtagSearchController {
+
+    private final HashtagService hashtagService;
+
+    @Autowired
+    public HashtagSearchController(HashtagService hashtagService) {
+        this.hashtagService = hashtagService;
+    }
 
     /**
      * This function handles the /hashtagsearch URL itself.
@@ -33,24 +41,30 @@ public class HashtagSearchController {
      */
     @GetMapping
     public ModelAndView webpage(@RequestParam(name = "hashtags") String hashtags) {
-        System.out.println("User is searching: " + hashtags);
+        System.out.println("User is searching hashtag: " + hashtags);
 
         // See notes on ModelAndView in BookmarksController.java.
         ModelAndView mv = new ModelAndView("posts_page");
 
-        // Following line populates sample data.
-        // You should replace it with actual data from the database.
-        List<Post> posts = Utility.createSamplePostsListWithoutComments();
+        // populates model view with posts that were queried by the hashtag service helper function
+
+        List<Post> posts = hashtagService.getMatchingTagPosts(hashtags);
         mv.addObject("posts", posts);
+
 
         // If an error occured, you can set the following property with the
         // error message to show the error message to the user.
+
         // String errorMessage = "Some error occured!";
         // mv.addObject("errorMessage", errorMessage);
 
         // Enable the following line if you want to show no content message.
         // Do that if your content list is empty.
         // mv.addObject("isNoContent", true);
+
+        if (posts.isEmpty()) {
+            mv.addObject("isNoContent", true);
+        }
         
         return mv;
     }
