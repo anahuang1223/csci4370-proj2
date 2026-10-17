@@ -55,11 +55,8 @@ public class PostService {
     }
 
     /**
-     * Creates a normal post for the currently logged-in user.
-     *
-     * The post and its hashtag relationships are created in the same
-     * transaction. This prevents a post from being partially stored if
-     * one of the hashtag database operations fails.
+     * Creates a normal post for the currently logged-in user. Hashtags
+     * are extracted and added to database if present.
      *
      * @param content the text content of the post
      * @return true if the post was successfully created
@@ -263,10 +260,8 @@ public class PostService {
     }
 
     /**
-     * Retrieves all normal posts created by a specific user.
+     * Retrieves all posts created by a specific user on that user's profile.
      *
-     * This method is used by profile pages. Posts are returned
-     * from newest to oldest.
      *
      * @param userId ID of the user whose posts should be retrieved
      * @return list of the user's posts
@@ -277,11 +272,8 @@ public class PostService {
         List<Post> posts = new ArrayList<>();
 
         /* Gets all posts made by a user */
-        final String sql = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName " +
-                "from post p " +
-                "join user u on p.userId = u.userId " +
-                "where p.userId = ? " +
-                "order by p.postDate desc";
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId where p.userId = ? order by p.postDate desc";
 
         try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -295,16 +287,20 @@ public class PostService {
                  */
                 while (rs.next()) {
                     User user = new User(rs.getString("userId"), rs.getString("firstName"),rs.getString("lastName"));
+                    
+                    // Adds posts or polls depending on postType
+                    if (rs.getString("postType").equals("POLL")) {
+                        Post post = new Poll(rs.getString("pollId"), rs.getString("postId"),rs.getString("content"), rs.getString("choice1"),
+                            rs.getString("choice2"), formatPostDate(rs.getTimestamp("postDate")), 0, 0, false, false,
+                            user, pollService.getTotalVotes(rs.getString("pollId"))
+                        );
+                        posts.add(post);
+                    } else {
+                        Post post = new Post(rs.getString("postId"), rs.getString("content"), formatPostDate(rs.getTimestamp("postDate")),
+                            user, 0, 0, false, false);
 
-                    /*
-                     * Likes, comments, and bookmarks are initialized
-                     * with default values here because those features
-                     * are handled separately.
-                     */
-                    Post post = new Post(rs.getString("postId"), rs.getString("content"), formatPostDate(rs.getTimestamp("postDate")),
-                                    user,0, 0, false, false);
-
-                    posts.add(post);
+                        posts.add(post);
+                    }
                 }
             }
         }
@@ -320,8 +316,6 @@ public class PostService {
      * - posts created by the logged-in user
      * - posts created by users that the logged-in user follows
      *
-     * Posts are returned from newest to oldest.
-     *
      * @param loggedInUserId ID of the logged-in user
      * @return list of posts for the user's home feed
      * @throws SQLException if the database query fails
@@ -336,13 +330,8 @@ public class PostService {
          * connecting the logged-in user to the post's author.
          */
         final String sql = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName, p.postType, po.pollId, po.choice1, po.choice2 " +
-                "from post p " +
-                "join user u on p.userId = u.userId " +
-                "left join poll po on po.postId = p.postId " +
-                "where (p.userId = ? or exists (" +
-                        "select 1 " +
-                        "from follow f " +
-                        "where f.followerId = ? and f.followedId = p.userId)) " +
+                "from post p join user u on p.userId = u.userId left join poll po on po.postId = p.postId " +
+                "where (p.userId = ? or exists (select 1 from follow f where f.followerId = ? and f.followedId = p.userId)) " +
                 "order by p.postDate desc";
 
         try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -353,7 +342,6 @@ public class PostService {
              * checks their follow relationships.
              */
             pstmt.setString(1, loggedInUserId);
-
             pstmt.setString(2, loggedInUserId);
 
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -361,16 +349,18 @@ public class PostService {
                 while (rs.next()) {
 
                     User user = new User(rs.getString("userId"), rs.getString("firstName"), rs.getString("lastName"));
-                    /* Checks if postType is POLL or a normal post. Gets the correct version. */
+                    
+                    // Checks if postType is a POLL or a NORMAL post. Adds correct version to posts list.
                     if (rs.getString("postType").equals("POLL")) {
                         Post post = new Poll(rs.getString("pollId"), rs.getString("postId"),rs.getString("content"), rs.getString("choice1"),
-                                        rs.getString("choice2"), formatPostDate(rs.getTimestamp("postDate")), 0, 0, false, false,
-                                        user, pollService.getTotalVotes(rs.getString("pollId"))
+                            rs.getString("choice2"), formatPostDate(rs.getTimestamp("postDate")), 0, 0, false, false,
+                            user, pollService.getTotalVotes(rs.getString("pollId"))
                         );
                         posts.add(post);
+
                     } else {
                         Post post = new Post(rs.getString("postId"),rs.getString("content"),formatPostDate(rs.getTimestamp("postDate")),
-                                        user, 0, 0, false, false);
+                            user, 0, 0, false, false);
                         posts.add(post);
                     }
                 }

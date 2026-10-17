@@ -5,6 +5,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import javax.sql.DataSource;
 
@@ -40,6 +44,11 @@ public class PollService {
         if (user == null) {
             return false;
         }
+
+        String trimmedContent = question.trim();
+
+        // Find all unique hashtags contained in the poll question.
+        Set<String> hashtags = extractHashtags(trimmedContent);
 
         // SQL statements for inserting into Post and Poll
         final String postSql = "insert into post(userId, content, postType) values (?, ?, 'POLL')";
@@ -84,6 +93,12 @@ public class PollService {
                         }
                         
                         System.out.println("Poll has been created successfully!");
+
+                        // Inserts hashtags into hashtag table
+                        for (String hashtag : hashtags) {
+                            int hashtagId = getOrCreateHashtag(conn, hashtag);
+                            linkPostToHashtag(conn, postId, hashtagId);
+                }
                         
                         return rowsAffected2 > 0;
                         
@@ -152,6 +167,78 @@ public class PollService {
             }
         }  
         return numVotes;
+    }
+
+    /***********************************************
+     * Hashtag Stuff (same as in PostService.java) *
+     ***********************************************/
+
+    /**
+     * Extracts the hashtags from the poll question.
+     * @param content
+     * @return
+     */
+    private Set<String> extractHashtags(String content) {
+
+        Set<String> hashtags = new HashSet<>();
+        Pattern pattern =Pattern.compile("#([A-Za-z0-9_]+)");
+        Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            hashtags.add(matcher.group(1).toLowerCase());
+        }
+        return hashtags;
+    }
+
+    /**
+     * Inserts hashtag into hashtag and returns the hashtag id.
+     * @param conn
+     * @param hashtag
+     * @return
+     * @throws SQLException
+     */
+    private int getOrCreateHashtag(Connection conn, String hashtag) throws SQLException {
+
+        /*
+         * If the hashtag already exists, LAST_INSERT_ID is set
+         * to its existing hashtagId.
+         */
+        final String sql = "insert into hashtag(hashtag) values (?) on duplicate key update hashtagId = last_insert_id(hashtagId)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            pstmt.setString(1, hashtag);
+
+            pstmt.executeUpdate();
+
+            // Retrieve the new or existing hashtagId.
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+
+        throw new SQLException("Failed to get hashtagId.");
+    }
+
+    /**
+     * Insert into postHashtag.
+     *
+     * @param conn active database connection
+     * @param postId ID of the post
+     * @param hashtagId ID of the hashtag
+     * @throws SQLException if the database operation fails
+     */
+    private void linkPostToHashtag(Connection conn, int postId, int hashtagId) throws SQLException {
+
+        final String sql = "insert into postHashtag(postId, hashtagId) values (?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, postId);
+            pstmt.setInt(2, hashtagId);
+            pstmt.executeUpdate();
+        }
     }
 
 }

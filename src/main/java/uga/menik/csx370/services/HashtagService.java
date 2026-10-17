@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 
+import uga.menik.csx370.models.Poll;
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.models.User;
 
@@ -32,14 +33,16 @@ import uga.menik.csx370.models.User;
 public class HashtagService {
     
     private final DataSource dataSource;
+    private final PollService pollService;
 
     /**
      * See AuthInterceptor notes regarding dependency injection and
      * inversion of control.
      */
     @Autowired
-    public HashtagService(DataSource dataSource) {
+    public HashtagService(DataSource dataSource, PollService pollService) {
         this.dataSource = dataSource;
+        this.pollService = pollService;
     }
     
 
@@ -82,7 +85,8 @@ public class HashtagService {
 
         // then writing the SQL query:
 
-        String query = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName from post p join user u on p.userId = u.userId join postHashtag t on p.postId = t.postId join hashtag h on t.hashtagId = h.hashtagId where p.postType = 'NORMAL' and h.hashtag in (";
+        String query = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " + 
+        "from post p left join poll on poll.postId = p.postId join user u on p.userId = u.userId join postHashtag t on p.postId = t.postId join hashtag h on t.hashtagId = h.hashtagId where h.hashtag in (";
 
         int numTags =  tagsList.size();
 
@@ -100,7 +104,7 @@ public class HashtagService {
 
         // using group by so we can count distinct tags and set that equal to the original number of tags searched, that is to say, it is verifying the presence of all tags searched
 
-        String endQuery = String.format(") group by p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName having count(distinct h.hashtag) = %d order by p.postDate desc;", numTags);
+        String endQuery = String.format(") group by p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 having count(distinct h.hashtag) = %d order by p.postDate desc;", numTags);
 
         query = query + subQuery + endQuery;
         
@@ -123,14 +127,32 @@ public class HashtagService {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    String postId = rs.getString("postId");
-                    String content = rs.getString("content");
-                    Timestamp postDate = rs.getTimestamp("postDate");
-                    String userID = rs.getString("userID");
-                    String firstName = rs.getString("firstName");
-                    String lastName = rs.getString("lastName");
-                    User user = new User(userID, firstName, lastName);
-                    posts.add(new Post(postId, content, formatPostDate(postDate), user, 0, 0, false, false));
+                    if (rs.getString("postType").equals("POLL")) {
+                        System.out.println("Trying to get Poll for hashtag!");
+                        String pollId = rs.getString("pollId");
+                        String postId = rs.getString("postId"); 
+                        Timestamp postDate = rs.getTimestamp("postDate");
+                        String content = rs.getString("content");
+                        String choice1 = rs.getString("choice1");
+                        String choice2 = rs.getString("choice2");
+                        String userId = rs.getString("userID");
+                        String firstName = rs.getString("firstName");
+                        String lastName = rs.getString("lastName");
+                        User user = new User(userId, firstName, lastName);
+                        
+                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
+                            user, pollService.getTotalVotes(rs.getString("pollId"))));
+                    } else {
+                        System.out.println("Getting a post for hashtag!");
+                        String postId = rs.getString("postId");
+                        String content = rs.getString("content");
+                        Timestamp postDate = rs.getTimestamp("postDate");
+                        String userID = rs.getString("userID");
+                        String firstName = rs.getString("firstName");
+                        String lastName = rs.getString("lastName");
+                        User user = new User(userID, firstName, lastName);
+                        posts.add(new Post(postId, content, formatPostDate(postDate), user, 0, 0, false, false));
+                    }
                 }
             }
         } catch (SQLException e) {
