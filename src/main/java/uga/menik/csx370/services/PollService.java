@@ -127,9 +127,9 @@ public class PollService {
         int numVotes = 0;
         String pollSql;
         if (choice == null) {
-            pollSql = "select count(*) from pollvotes where pollId = ?";
+            pollSql = "select count(*) from pollvote where pollId = ?";
         } else {
-            pollSql = "select count(*) from pollvotes where pollId = ? and choice = ?";
+            pollSql = "select count(*) from pollvote where pollId = ? and choice = ?";
         }
         
         try (Connection conn = dataSource.getConnection();
@@ -143,6 +143,9 @@ public class PollService {
 
             // Getting the "count" for number of votes for choice 1
             try (ResultSet rs = pollStmt.executeQuery()) {
+                if (!rs.next()) {
+                    return 0;
+                } 
                 numVotes = rs.getInt("count(*)");
             }
         }  
