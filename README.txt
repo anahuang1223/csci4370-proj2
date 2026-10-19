@@ -31,7 +31,7 @@ Group ID: 6
 - Ana Huang: Implemented people page and following list. Filmed Demo Video
 - Leen Quazi: Implemented Posts on Profile and Home feeds and extracting hashtags from posts.
 - Sach Shrestha: Implemented Hashtag search function. Drew ER Diagram.
-- Leanne Wong: Implemented the new custom feature: Polls. Wrote dml.sql
+- Leanne Wong: Implemented the new custom feature: Polls. Wrote dml.sql and README
 
 
 ### New Feature: Polls
