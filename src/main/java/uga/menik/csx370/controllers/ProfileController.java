@@ -30,9 +30,7 @@ public class ProfileController {
     private final PostService postService;
 
     @Autowired
-    public ProfileController(
-            UserService userService,
-            PostService postService) {
+    public ProfileController(UserService userService, PostService postService) {
 
         this.userService = userService;
         this.postService = postService;
@@ -44,30 +42,24 @@ public class ProfileController {
     @GetMapping
     public ModelAndView profileOfLoggedInUser() {
 
-        System.out.println(
-                "User is attempting to view profile of the logged in user.");
+        System.out.println("User is attempting to view profile of the logged in user.");
 
-        return profileOfSpecificUser(
-                userService.getLoggedInUser().getUserId());
+        return profileOfSpecificUser(userService.getLoggedInUser().getUserId());
     }
 
     /**
      * Shows posts made by a specific user.
      */
     @GetMapping("/{userId}")
-    public ModelAndView profileOfSpecificUser(
-            @PathVariable("userId") String userId) {
+    public ModelAndView profileOfSpecificUser(@PathVariable("userId") String userId) {
 
-        System.out.println(
-                "User is attempting to view profile: " + userId);
+        System.out.println("User is attempting to view profile: " + userId);
 
-        ModelAndView mv =
-                new ModelAndView("posts_page");
+        ModelAndView mv = new ModelAndView("posts_page");
 
         try {
 
-            List<Post> posts =
-                    postService.getPostsByUser(userId);
+            List<Post> posts = postService.getPostsByUser(userId);
 
             mv.addObject("posts", posts);
 
@@ -79,10 +71,7 @@ public class ProfileController {
 
             e.printStackTrace();
 
-            mv.addObject(
-                    "errorMessage",
-                    "Failed to load posts."
-            );
+            mv.addObject("errorMessage", "Failed to load posts.");
         }
 
         return mv;

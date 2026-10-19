@@ -298,7 +298,7 @@ public class PostService {
                         Timestamp postDate = rs.getTimestamp("postDate");
                         Integer totalVotes = pollService.getTotalVotes(rs.getString("pollId"));
                         Integer choice1Votes = pollService.getChoice1Votes(rs.getString("pollId"));
-                        Integer choice2Votes = pollService.getTotalVotes(rs.getString("pollId"));
+                        Integer choice2Votes = pollService.getChoice2Votes(rs.getString("pollId"));
 
                         boolean hasVoted = pollService.getHasVoted(pollId);
                         
