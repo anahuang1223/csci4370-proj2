@@ -230,7 +230,9 @@ nav a:hover {
     margin-left: 16pt;
 }
 
-/* Poll stuff */
+
+/********************** Poll stuff **********************/
+
 
 .poll-choices {
     display: flex;
