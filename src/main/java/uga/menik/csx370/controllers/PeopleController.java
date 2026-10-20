@@ -57,15 +57,19 @@ public class PeopleController {
         // You should replace it with actual data from the database.
         // Use the PeopleService instance to find followable users.
         // Use UserService to access logged in userId to exclude.
-        String userId = userService.getLoggedInUser().getUserId();
-        List<FollowableUser> followableUsers = peopleService.getFollowableUsers(userId);
-        mv.addObject("users", followableUsers);
+        
+        try {
+            String userId = userService.getLoggedInUser().getUserId();
+            List<FollowableUser> followableUsers = peopleService.getFollowableUsers(userId);
+            mv.addObject("users", followableUsers);
+        } catch (SQLException sqlError) {
 
-        // If an error occured, you can set the following property with the
-        // error message to show the error message to the user.
-        // An error message can be optionally specified with a url query parameter too.
-        String errorMessage = error;
-        mv.addObject("errorMessage", errorMessage);
+            // If an error occured, you can set the following property with the
+            // error message to show the error message to the user.
+            // An error message can be optionally specified with a url query parameter too.
+            String errorMessage = sqlError.toString();
+            mv.addObject("errorMessage", errorMessage);
+        }
 
         // Enable the following line if you want to show no content message.
         // Do that if your content list is empty.

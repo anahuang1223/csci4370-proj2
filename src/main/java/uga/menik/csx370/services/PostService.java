@@ -343,7 +343,7 @@ public class PostService {
          */
         final String sql = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName, p.postType, po.pollId, po.choice1, po.choice2 " +
             "from post p join user u on p.userId = u.userId left join poll po on po.postId = p.postId " +
-            "where (p.userId = ? or exists (select 1 from follow f where f.followerId = ? and f.followedId = p.userId)) " +
+            "where (p.userId = ? or exists (select 1 from follow f where f.followerUserId = ? and f.followeeUserId = p.userId)) " +
             "order by p.postDate desc";
 
         try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
