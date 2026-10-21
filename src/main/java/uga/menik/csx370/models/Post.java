@@ -92,4 +92,13 @@ public class Post extends BasicPost {
     public boolean isBookmarked() {
         return isBookmarked;
     }
+
+    /**
+     * Returns that this is not a poll.
+     * 
+     *
+     */
+    public boolean getIsPoll() {
+        return false;
+    }
 }

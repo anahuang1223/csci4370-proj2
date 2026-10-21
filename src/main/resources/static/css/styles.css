@@ -91,9 +91,23 @@ nav a:hover {
 .container.narrow {
     max-width: 300pt;
 }
+
+.container a {
+    text-decoration: none;
+}
+
 .center-align{
     text-align: center;
 }
+
+.post-form h3 {
+    margin-left: 8pt;
+}
+
+.post-form h2 {
+    margin-bottom: 30pt;
+}
+
 .post-form textarea {
     width: calc(100% - 16pt);
     padding: 8pt;
@@ -108,6 +122,8 @@ nav a:hover {
     float: right;
     margin-right: 8pt;
     margin-bottom: 8pt;
+    padding: 12px 30px;
+    font-size: 18px;
 }
 .post {
     padding: 16pt;
@@ -212,4 +228,107 @@ nav a:hover {
 }
 .link {
     margin-left: 16pt;
+}
+
+
+/********************** Poll stuff **********************/
+
+
+.poll-choices {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    margin-top: 12px;
+}
+
+.poll-choice-button {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 16px;
+    text-align: left;
+    box-sizing: border-box;
+    cursor: pointer;
+    margin-bottom: 12px;
+}
+
+.poll-choice-button span {
+    line-height: 1.5;
+}
+
+/* Popup Modals for Create Post and Create Poll */
+
+/* Darkens the background behind forms when popup appears */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: rgba(0, 0, 0, 0.65);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* Shows the form window */
+.modal-overlay:target {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Actual panel of the form */
+.modal-panel {
+    position: relative;
+    width: 100%;
+    max-width: 650px;
+    min-height: 25vh;
+    max-height: 75vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 32px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-panel .post-form, .modal-panel form {
+    width: 100%;
+}
+
+.modal-panel textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 8px 0 16px;
+    padding: 10px;
+    resize: vertical;
+    height: 90px;
+}
+
+.modal-panel a {
+    padding: 5px;
+}
+
+.modal-panel .action-button {
+    float: right;
+}
+
+/* Closes the form window */
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    color: var(--action-item-color);
+    text-decoration: none;
+    font-size: 22px;
+}
+
+.modal-close:hover {
+    color: var(--highlight-color);
 }

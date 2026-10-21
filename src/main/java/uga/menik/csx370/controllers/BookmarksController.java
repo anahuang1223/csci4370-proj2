@@ -5,52 +5,72 @@ This is a project developed by Dr. Menik to give the students an opportunity to 
 */
 package uga.menik.csx370.controllers;
 
+import java.sql.SQLException;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.models.Post;
-import uga.menik.csx370.utility.Utility;
+import uga.menik.csx370.services.PostService;
+import uga.menik.csx370.services.UserService;
 
 /**
  * Handles /bookmarks and its sub URLs.
  * No other URLs at this point.
- * 
- * Learn more about @Controller here: 
+ *
+ * Learn more about @Controller here:
  * https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller.html
  */
 @Controller
 @RequestMapping("/bookmarks")
 public class BookmarksController {
 
+    private final PostService postService;
+    private final UserService userService;
+
+    @Autowired
+    public BookmarksController(PostService postService, UserService userService) {
+        this.postService = postService;
+        this.userService = userService;
+    }
+
     /**
      * /bookmarks URL itself is handled by this.
+     * Shows the posts the logged-in user has bookmarked, newest first.
      */
     @GetMapping
-    public ModelAndView webpage() {
+    public ModelAndView webpage(@RequestParam(name = "error", required = false) String error) {
         // posts_page is a mustache template from src/main/resources/templates.
         // ModelAndView class enables initializing one and populating placeholders
         // in the template using Java objects assigned to named properties.
         ModelAndView mv = new ModelAndView("posts_page");
 
-        // Following line populates sample data.
-        // You should replace it with actual data from the database.
-        List<Post> posts = Utility.createSamplePostsListWithoutComments();
-        mv.addObject("posts", posts);
+        try {
+            String loggedInUserId = userService.getLoggedInUser().getUserId();
 
-        // If an error occured, you can set the following property with the
-        // error message to show the error message to the user.
-        // String errorMessage = "Some error occured!";
-        // mv.addObject("errorMessage", errorMessage);
+            List<Post> posts = postService.getBookmarkedPosts(loggedInUserId);
+            mv.addObject("posts", posts);
 
-        // Enable the following line if you want to show no content message.
-        // Do that if your content list is empty.
-        // mv.addObject("isNoContent", true);
+            // Show the no content message if the user has no bookmarks.
+            if (posts.isEmpty()) {
+                mv.addObject("isNoContent", true);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            mv.addObject("errorMessage", "Failed to load bookmarks.");
+        }
+
+        if (error != null) {
+            mv.addObject("errorMessage", error);
+        }
 
         return mv;
     }
-    
+
 }
