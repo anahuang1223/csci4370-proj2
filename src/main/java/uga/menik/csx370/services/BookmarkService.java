@@ -32,12 +32,7 @@ public class BookmarkService {
     }
 
     /**
-     * Bookmarks a post for the logged-in user.
-     * Bookmarking a post that is already bookmarked does nothing.
-     *
-     * @param postId ID of the post to bookmark
-     * @return true if the logged-in user now has the post bookmarked
-     * @throws SQLException if the database operation fails
+     * Bookmarks a post for the logged-in user. You cannot bookmark a page that has already been bookmarked
      */
     public boolean addBookmark(String postId) throws SQLException {
 
@@ -47,7 +42,6 @@ public class BookmarkService {
             return false;
         }
 
-        // (postId, userId) is the primary key, so duplicates are skipped.
         final String sql = "insert ignore into bookmark (postId, userId) values (?, ?)";
 
         try (Connection conn = dataSource.getConnection();
@@ -62,11 +56,7 @@ public class BookmarkService {
     }
 
     /**
-     * Removes a post from the logged-in user's bookmarks.
-     *
-     * @param postId ID of the post to un-bookmark
-     * @return true if the logged-in user no longer has the post bookmarked
-     * @throws SQLException if the database operation fails
+     * Removes a post from the logged-in user's bookmarks
      */
     public boolean removeBookmark(String postId) throws SQLException {
 
@@ -90,11 +80,7 @@ public class BookmarkService {
     }
 
     /**
-     * Checks whether the logged-in user has bookmarked a post.
-     *
-     * @param postId ID of the post
-     * @return true if the logged-in user has bookmarked the post
-     * @throws SQLException if the database query fails
+     * Checks whether the logged-in user has bookmarked a post
      */
     public boolean isBookmarked(String postId) throws SQLException {
 
@@ -113,7 +99,7 @@ public class BookmarkService {
             pstmt.setString(2, user.getUserId());
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                // A row exists only if this user bookmarked this post.
+                // Only if user has bookmarked
                 return rs.next();
             }
         }

@@ -56,7 +56,7 @@ public class PostController {
      * An example URL handled by this function looks like below:
      * http://localhost:8081/post/1
      * The above URL assigns 1 to postId.
-     *
+     * 
      * See notes from HomeController.java regardig error URL parameter.
      */
     @GetMapping("/{postId}")
@@ -67,11 +67,9 @@ public class PostController {
         ModelAndView mv = new ModelAndView("posts_page");
 
         try {
-            // An ExpandedPost or ExpandedPoll, which includes the comments.
             Post post = postService.getExpandedPost(postId);
 
             if (post == null) {
-                // No post with this ID exists.
                 mv.addObject("isNoContent", true);
             } else {
                 mv.addObject("posts", List.of(post));
@@ -79,6 +77,8 @@ public class PostController {
 
         } catch (SQLException e) {
             e.printStackTrace();
+            // If an error occured, you can set the following property with the
+            // error message to show the error message to the user.
             mv.addObject("errorMessage", "Failed to load the post.");
         }
 
@@ -121,7 +121,7 @@ public class PostController {
     /**
      * Handles likes added on posts.
      * See comments on webpage function to see how path variables work here.
-     * See comments in PeopleController.java in followUnfollowUser function regarding
+     * See comments in PeopleController.java in followUnfollowUser function regarding 
      * get type form submissions and how path variables work.
      */
     @GetMapping("/{postId}/heart/{isAdd}")
@@ -136,7 +136,7 @@ public class PostController {
             boolean success = isAdd ? heartService.addHeart(postId) : heartService.removeHeart(postId);
 
             if (success) {
-                // Send the user back to the page they clicked the heart on.
+                // Redirect the user if the comment adding is a success.
                 return redirectBack(referer, postId);
             }
         } catch (SQLException e) {
@@ -152,7 +152,7 @@ public class PostController {
     /**
      * Handles bookmarking posts.
      * See comments on webpage function to see how path variables work here.
-     * See comments in PeopleController.java in followUnfollowUser function regarding
+     * See comments in PeopleController.java in followUnfollowUser function regarding 
      * get type form submissions.
      */
     @GetMapping("/{postId}/bookmark/{isAdd}")
@@ -167,7 +167,7 @@ public class PostController {
             boolean success = isAdd ? bookmarkService.addBookmark(postId) : bookmarkService.removeBookmark(postId);
 
             if (success) {
-                // Send the user back to the page they clicked the bookmark on.
+                // Redirect the user if the comment adding is a success.
                 return redirectBack(referer, postId);
             }
         } catch (SQLException e) {
@@ -181,13 +181,7 @@ public class PostController {
     }
 
     /**
-     * Builds a redirect back to the page the user was on (home, profile,
-     * bookmarks, hashtag search, or the post page) so that liking or
-     * bookmarking doesn't take them somewhere else. Uses the Referer
-     * header the browser sends. Falls back to the post's page.
-     *
-     * Only the path and query of the Referer are kept so the redirect
-     * always stays on this site. Any old error message is dropped.
+     * Builds a redirect back to the page the user was on 
      */
     private String redirectBack(String referer, String postId) {
         if (referer != null) {
@@ -203,7 +197,7 @@ public class PostController {
                     return "redirect:" + path + (query == null || query.isEmpty() ? "" : "?" + query);
                 }
             } catch (URISyntaxException e) {
-                // Fall through to the default redirect below.
+                // Fall through to below redirect
             }
         }
 

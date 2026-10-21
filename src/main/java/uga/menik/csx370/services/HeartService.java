@@ -14,9 +14,6 @@ import uga.menik.csx370.models.User;
 
 /**
  * This service contains database operations related to hearts (likes).
- *
- * Heart counts are not stored anywhere. They are counted from the
- * heart table every time a post is displayed.
  */
 @Service
 public class HeartService {
@@ -31,12 +28,7 @@ public class HeartService {
     }
 
     /**
-     * Adds a heart from the logged-in user to a post.
-     * Hearting a post that is already hearted does nothing.
-     *
-     * @param postId ID of the post to heart
-     * @return true if the logged-in user now hearts the post
-     * @throws SQLException if the database operation fails
+     * Adds a heart from the logged-in user to a post. You cannot heart a post that ahs already been hearted
      */
     public boolean addHeart(String postId) throws SQLException {
 
@@ -46,12 +38,6 @@ public class HeartService {
             return false;
         }
 
-        /*
-         * (postId, userId) is the primary key of heart, so a user can
-         * only heart a post once. "insert ignore" skips the insert
-         * instead of throwing an error if the heart already exists
-         * (for example, if the user double-clicks the heart button).
-         */
         final String sql = "insert ignore into heart (postId, userId) values (?, ?)";
 
         try (Connection conn = dataSource.getConnection();
@@ -66,11 +52,8 @@ public class HeartService {
     }
 
     /**
-     * Removes the logged-in user's heart from a post.
+     * Removes the logged-in user's heart from a post
      *
-     * @param postId ID of the post to un-heart
-     * @return true if the logged-in user no longer hearts the post
-     * @throws SQLException if the database operation fails
      */
     public boolean removeHeart(String postId) throws SQLException {
 
@@ -95,10 +78,6 @@ public class HeartService {
 
     /**
      * Counts how many hearts a post has.
-     *
-     * @param postId ID of the post
-     * @return number of hearts on the post
-     * @throws SQLException if the database query fails
      */
     public int getHeartCount(String postId) throws SQLException {
 
@@ -121,10 +100,6 @@ public class HeartService {
 
     /**
      * Checks whether the logged-in user has hearted a post.
-     *
-     * @param postId ID of the post
-     * @return true if the logged-in user has hearted the post
-     * @throws SQLException if the database query fails
      */
     public boolean isHearted(String postId) throws SQLException {
 
@@ -143,7 +118,7 @@ public class HeartService {
             pstmt.setString(2, user.getUserId());
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                // A row exists only if this user hearted this post.
+                // Only if user has hearted
                 return rs.next();
             }
         }

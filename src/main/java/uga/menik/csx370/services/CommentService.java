@@ -17,12 +17,6 @@ import org.springframework.stereotype.Service;
 import uga.menik.csx370.models.Comment;
 import uga.menik.csx370.models.User;
 
-/**
- * This service contains database operations related to comments.
- *
- * Comment counts are not stored anywhere. They are counted from the
- * comment table every time a post is displayed.
- */
 @Service
 public class CommentService {
 
@@ -36,12 +30,7 @@ public class CommentService {
     }
 
     /**
-     * Adds a comment from the logged-in user to a post.
-     *
-     * @param postId ID of the post being commented on
-     * @param content text of the comment
-     * @return true if the comment was saved
-     * @throws SQLException if the database operation fails
+     * Adds a comment from the logged-in user to a post
      */
     public boolean addComment(String postId, String content) throws SQLException {
 
@@ -53,12 +42,10 @@ public class CommentService {
 
         String trimmedContent = content.trim();
 
-        // Empty comments are not allowed (the table also has a check constraint).
         if (trimmedContent.isEmpty()) {
             return false;
         }
 
-        // commentDate defaults to the current time in the table definition.
         final String sql = "insert into comment (postId, userId, content) values (?, ?, ?)";
 
         try (Connection conn = dataSource.getConnection();
@@ -73,12 +60,7 @@ public class CommentService {
     }
 
     /**
-     * Retrieves all comments on a post, oldest first, along with the
-     * user who wrote each one.
-     *
-     * @param postId ID of the post
-     * @return list of comments on the post
-     * @throws SQLException if the database query fails
+     * Retrieves all comments on a post, oldest first, along with the user who wrote each one 
      */
     public List<Comment> getComments(String postId) throws SQLException {
 
@@ -102,16 +84,11 @@ public class CommentService {
                 }
             }
         }
-
         return comments;
     }
 
     /**
-     * Counts how many comments a post has.
-     *
-     * @param postId ID of the post
-     * @return number of comments on the post
-     * @throws SQLException if the database query fails
+     * Counts how many comments a post has
      */
     public int getCommentCount(String postId) throws SQLException {
 
@@ -133,8 +110,7 @@ public class CommentService {
     }
 
     /**
-     * Formats a comment date the same way post dates are formatted.
-     * Example: Oct 16, 2026, 06:38 AM
+     * Formats a comment date the same way post dates are formatted
      */
     private String formatDate(Timestamp timestamp) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a");
