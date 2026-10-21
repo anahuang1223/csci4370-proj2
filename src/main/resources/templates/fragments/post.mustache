@@ -10,9 +10,34 @@ This is a project developed by Dr. Menik to give the students an opportunity to 
             <a href="/profile/{{user.userId}}">{{user.firstName}} {{user.lastName}}</a>
         </div>
         <div class="post-date">{{postDate}}</div>
-        <div class="post-content">
-            {{content}}
-        </div>
+        
+        {{#isPoll}}
+            <div class="post-content">
+                <p>{{content}}</p>
+
+                <form method="post" action="/poll/vote class="poll-choices">
+                    <input type="hidden" name="pollId" value="{{pollId}}">
+
+                    <button type="submit" name="choice" value="1"
+                            class="action-button poll-choice-button">
+                        {{choice1}}
+                    </button>
+
+                    <button type="submit" name="choice" value="2"
+                            class="action-button poll-choice-button">
+                        {{choice2}}
+                    </button>
+                </form>
+
+                <p>Total votes: {{voteCount}}</p>
+            </div>
+        {{/isPoll}}
+
+        {{^isPoll}}
+            <div class="post-content">
+                {{content}}
+            </div>
+        {{/isPoll}}
         <div class="post-actions">
             <a href="/post/{{postId}}" class="far fa-comment"></a>
             <span class="action-count">{{commentsCount}}</span>
