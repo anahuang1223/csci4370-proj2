@@ -22,6 +22,9 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import uga.menik.csx370.models.Comment;
+import uga.menik.csx370.models.ExpandedPoll;
+import uga.menik.csx370.models.ExpandedPost;
 import uga.menik.csx370.models.Poll;
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.models.User;
@@ -30,7 +33,8 @@ import uga.menik.csx370.models.User;
  * This service contains database operations related to posts.
  *
  * It handles creating normal posts, storing hashtags, retrieving
- * posts for profile pages, and retrieving posts for the home feed.
+ * posts for profile pages, the home feed, the bookmarks page, and
+ * a single post's page (with its comments).
  */
 @Service
 public class PostService {
@@ -38,20 +42,31 @@ public class PostService {
     private final DataSource dataSource;
     private final UserService userService;
     private final PollService pollService;
+    private final HeartService heartService;
+    private final CommentService commentService;
+    private final BookmarkService bookmarkService;
 
     /**
      * Creates a PostService using the application's database connection
-     * source and UserService.
+     * source and the services it needs to fill in each post's details.
      *
      * @param dataSource database connection source
      * @param userService service used to access the logged-in user
+     * @param pollService service used to get poll vote information
+     * @param heartService service used to get heart counts / hearted status
+     * @param commentService service used to get comments and comment counts
+     * @param bookmarkService service used to get bookmarked status
      */
     @Autowired
-    public PostService(DataSource dataSource, UserService userService, PollService pollService) {
+    public PostService(DataSource dataSource, UserService userService, PollService pollService,
+            HeartService heartService, CommentService commentService, BookmarkService bookmarkService) {
 
         this.dataSource = dataSource;
         this.userService = userService;
         this.pollService = pollService;
+        this.heartService = heartService;
+        this.commentService = commentService;
+        this.bookmarkService = bookmarkService;
     }
 
     /**
@@ -282,37 +297,11 @@ public class PostService {
             try (ResultSet rs = pstmt.executeQuery()) {
 
                 /*
-                 * Convert each database row into the User and
-                 * Post model objects expected by the templates.
+                 * Convert each database row into the Post (or Poll)
+                 * model object expected by the templates.
                  */
                 while (rs.next()) {
-                    User user = new User(rs.getString("userId"), rs.getString("firstName"),rs.getString("lastName"));
-                    
-                    // Adds posts or polls depending on postType
-                    if (rs.getString("postType").equals("POLL")) {
-                        String pollId = rs.getString("pollId");
-                        String postId = rs.getString("postId");
-                        String content = rs.getString("content");
-                        String choice1 = rs.getString("choice1");
-                        String choice2 = rs.getString("choice2");
-                        Timestamp postDate = rs.getTimestamp("postDate");
-                        Integer totalVotes = pollService.getTotalVotes(rs.getString("pollId"));
-                        Integer choice1Votes = pollService.getChoice1Votes(rs.getString("pollId"));
-                        Integer choice2Votes = pollService.getChoice2Votes(rs.getString("pollId"));
-
-                        boolean hasVoted = pollService.getHasVoted(pollId);
-                        
-                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
-                            user, totalVotes, choice1Votes, choice2Votes, hasVoted));
-                    } else {
-                        String postId = rs.getString("postId");
-                        String content = rs.getString("content");
-                        Timestamp postDate = rs.getTimestamp("postDate");
-                        Post post = new Post(postId, content, formatPostDate(postDate),
-                            user, 0, 0, false, false
-                        );
-                        posts.add(post);
-                    }
+                    posts.add(buildPost(rs));
                 }
             }
         }
@@ -359,35 +348,134 @@ public class PostService {
             try (ResultSet rs = pstmt.executeQuery()) {
 
                 while (rs.next()) {
-
-                    User user = new User(rs.getString("userId"), rs.getString("firstName"), rs.getString("lastName"));
-                    
-                    // Checks if postType is a POLL or a NORMAL post. Adds correct version to posts list.
-                    if (rs.getString("postType").equals("POLL")) {
-                        String pollId = rs.getString("pollId");
-                        String postId = rs.getString("postId");
-                        String content = rs.getString("content");
-                        String choice1 = rs.getString("choice1");
-                        String choice2 = rs.getString("choice2");
-                        Timestamp postDate = rs.getTimestamp("postDate");
-                        Integer totalVotes = pollService.getTotalVotes(pollId);
-                        Integer choice1Votes = pollService.getChoice1Votes(pollId);
-                        Integer choice2Votes = pollService.getChoice2Votes(pollId);
-
-                        boolean hasVoted = pollService.getHasVoted(pollId);
-                        
-                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
-                            user, totalVotes, choice1Votes, choice2Votes, hasVoted));
-
-                    } else {
-                        Post post = new Post(rs.getString("postId"),rs.getString("content"),formatPostDate(rs.getTimestamp("postDate")),
-                            user, 0, 0, false, false);
-                        posts.add(post);
-                    }
+                    // Adds a Poll or a normal Post depending on postType.
+                    posts.add(buildPost(rs));
                 }
             }
         }
 
         return posts;
+    }
+
+    /**
+     * Retrieves the posts a user has bookmarked, newest post first.
+     * Used by the /bookmarks page.
+     *
+     * @param userId ID of the user whose bookmarks should be retrieved
+     * @return list of bookmarked posts (and polls)
+     * @throws SQLException if the database query fails
+     */
+    public List<Post> getBookmarkedPosts(String userId) throws SQLException {
+
+        List<Post> posts = new ArrayList<>();
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from bookmark b join post p on b.postId = p.postId join user u on p.userId = u.userId " +
+                "left join poll on poll.postId = p.postId " +
+                "where b.userId = ? order by p.postDate desc";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    posts.add(buildPost(rs));
+                }
+            }
+        }
+
+        return posts;
+    }
+
+    /**
+     * Retrieves a single post (or poll) together with all of its comments.
+     * Used by the /post/{postId} page.
+     *
+     * @param postId ID of the post
+     * @return an ExpandedPost or ExpandedPoll, or null if no such post exists
+     * @throws SQLException if the database query fails
+     */
+    public Post getExpandedPost(String postId) throws SQLException {
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId " +
+                "where p.postId = ?";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, postId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    List<Comment> comments = commentService.getComments(postId);
+                    return buildPost(rs, comments);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     *
+     * The query must select these columns: postId, content, postDate,
+     * postType, userId, firstName, lastName, pollId, choice1, choice2.
+     */
+    private Post buildPost(ResultSet rs) throws SQLException {
+        return buildPost(rs, null);
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     *
+     * Heart/comment counts and whether the logged-in user has hearted or
+     * bookmarked the post are looked up from the heart, comment, and
+     * bookmark tables. If comments is not null, an ExpandedPost or
+     * ExpandedPoll (which shows its comments) is returned instead.
+     */
+    private Post buildPost(ResultSet rs, List<Comment> comments) throws SQLException {
+
+        User user = new User(rs.getString("userId"), rs.getString("firstName"), rs.getString("lastName"));
+
+        String postId = rs.getString("postId");
+        String content = rs.getString("content");
+        String postDate = formatPostDate(rs.getTimestamp("postDate"));
+
+        // Likes, comments, and bookmarks for this post.
+        int heartsCount = heartService.getHeartCount(postId);
+        int commentsCount = commentService.getCommentCount(postId);
+        boolean isHearted = heartService.isHearted(postId);
+        boolean isBookmarked = bookmarkService.isBookmarked(postId);
+
+        // Polls also need their choices and vote counts.
+        if ("POLL".equals(rs.getString("postType"))) {
+            String pollId = rs.getString("pollId");
+            String choice1 = rs.getString("choice1");
+            String choice2 = rs.getString("choice2");
+            int totalVotes = pollService.getTotalVotes(pollId);
+            int choice1Votes = pollService.getChoice1Votes(pollId);
+            int choice2Votes = pollService.getChoice2Votes(pollId);
+            boolean hasVoted = pollService.getHasVoted(pollId);
+
+            if (comments != null) {
+                return new ExpandedPoll(pollId, postId, content, choice1, choice2, postDate,
+                        heartsCount, commentsCount, isHearted, isBookmarked,
+                        user, totalVotes, choice1Votes, choice2Votes, hasVoted, comments);
+            }
+
+            return new Poll(pollId, postId, content, choice1, choice2, postDate,
+                    heartsCount, commentsCount, isHearted, isBookmarked,
+                    user, totalVotes, choice1Votes, choice2Votes, hasVoted);
+        }
+
+        if (comments != null) {
+            return new ExpandedPost(postId, content, postDate, user,
+                    heartsCount, commentsCount, isHearted, isBookmarked, comments);
+        }
+
+        return new Post(postId, content, postDate, user,
+                heartsCount, commentsCount, isHearted, isBookmarked);
     }
 }
