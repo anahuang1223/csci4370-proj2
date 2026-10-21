@@ -1,0 +1,382 @@
+package uga.menik.csx370.services;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+
+import java.time.format.DateTimeFormatter;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import uga.menik.csx370.models.Comment;
+import uga.menik.csx370.models.ExpandedPoll;
+import uga.menik.csx370.models.ExpandedPost;
+import uga.menik.csx370.models.Poll;
+import uga.menik.csx370.models.Post;
+import uga.menik.csx370.models.User;
+
+/**
+ * This service contains database operations related to posts.
+ *
+ * It handles creating normal posts, storing hashtags, retrieving
+ * posts for profile pages, the home feed, the bookmarks page, and
+ * a single post's page .
+ */
+@Service
+public class PostService {
+
+    private final DataSource dataSource;
+    private final UserService userService;
+    private final PollService pollService;
+    private final HeartService heartService;
+    private final CommentService commentService;
+    private final BookmarkService bookmarkService;
+
+    /**
+     * Creates a PostService using the application's database connection
+     * source and the services it needs to fill in each post's details.
+     *
+     */
+    @Autowired
+    public PostService(DataSource dataSource, UserService userService, PollService pollService,
+            HeartService heartService, CommentService commentService, BookmarkService bookmarkService) {
+
+        this.dataSource = dataSource;
+        this.userService = userService;
+        this.pollService = pollService;
+        this.heartService = heartService;
+        this.commentService = commentService;
+        this.bookmarkService = bookmarkService;
+    }
+
+    /**
+     * Creates a normal post for the currently logged-in user. Hashtags
+     * are extracted and added to database if present.
+     */
+    public boolean createPost(String content) throws SQLException {
+
+
+        User user = userService.getLoggedInUser();
+
+
+        if (user == null) {
+            return false;
+        }
+
+        // Remove unnecessary whitespace from the beginning and end.
+        String trimmedContent = content.trim();
+
+        // The project does not allow empty posts.
+        if (trimmedContent.isEmpty()) {
+            return false;
+        }
+
+        Set<String> hashtags = extractHashtags(trimmedContent);
+
+        final String postSql = "insert into post(userId, content, postType) values (?, ?, 'NORMAL')";
+
+        try (Connection conn = dataSource.getConnection()) {
+
+            conn.setAutoCommit(false);
+
+            try {
+
+                int postId;
+
+                try (PreparedStatement postStmt = conn.prepareStatement(postSql, Statement.RETURN_GENERATED_KEYS)) {
+
+                    postStmt.setString(1, user.getUserId());
+                    postStmt.setString(2,trimmedContent);
+
+                    int rowsAffected = postStmt.executeUpdate();
+
+                    // The insert failed if no rows were affected.
+                    if (rowsAffected == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+
+                    try (ResultSet rs = postStmt.getGeneratedKeys()) {
+
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+
+                        postId = rs.getInt(1);
+                    }
+                }
+
+                for (String hashtag : hashtags) {
+                    int hashtagId = getOrCreateHashtag(conn, hashtag);
+                    linkPostToHashtag(conn, postId, hashtagId);
+                }
+
+                conn.commit();
+
+                return true;
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+
+            } finally {
+
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    /**
+     * Gets the ID for a hashtag. If the hashtag does not already exist in the hashtag table, it is inserted first.
+     **/
+    private int getOrCreateHashtag(Connection conn, String hashtag)
+            throws SQLException {
+
+        /*
+         * If the hashtag already exists, LAST_INSERT_ID is set to its existing hashtagId. 
+         */
+        final String sql = "insert into hashtag(hashtag) values (?) on duplicate key update hashtagId = last_insert_id(hashtagId)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            pstmt.setString(1, hashtag);
+
+            pstmt.executeUpdate();
+
+            // Retrieve the new or existing hashtagId.
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+
+        throw new SQLException("Failed to get hashtagId.");
+    }
+
+    /**
+     * Creates the relationship between a post and one of its hashtags.
+     */
+    private void linkPostToHashtag(Connection conn, int postId, int hashtagId) throws SQLException {
+
+        final String sql = "insert into postHashtag(postId, hashtagId) values (?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, postId);
+            pstmt.setInt(2, hashtagId);
+            pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Extracts the unique hashtags contained in a post.
+     */
+    private Set<String> extractHashtags(String content) {
+
+        Set<String> hashtags = new HashSet<>();
+        Pattern pattern =Pattern.compile("#([A-Za-z0-9_]+)");
+        Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            hashtags.add(matcher.group(1).toLowerCase());
+        }
+        return hashtags;
+    }
+
+    /**
+     * Converts a database timestamp into the date format displayed
+     * by the microblogging interface.
+     */
+    private String formatPostDate(Timestamp timestamp) {
+        DateTimeFormatter formatter =DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a");
+
+        return timestamp.toLocalDateTime().format(formatter);
+    }
+
+    /**
+     * Retrieves all posts created by a specific user on that user's profile.
+     */
+    public List<Post> getPostsByUser(String userId) throws SQLException {
+
+        List<Post> posts = new ArrayList<>();
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId where p.userId = ? order by p.postDate desc";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    posts.add(buildPost(rs));
+                }
+            }
+        }
+
+        return posts;
+    }
+
+    /**
+     * Retrieves the posts that should appear in the logged-in user's home feed
+     */
+    public List<Post> getHomeFeed(String loggedInUserId) throws SQLException {
+
+        List<Post> posts = new ArrayList<>();
+
+        /*
+         * A post belongs in the home feed if its author is the
+         * logged-in user OR if there is a follow relationship
+         * connecting the logged-in user to the post's author.
+         */
+        final String sql = "select p.postId, p.content, p.postDate, u.userId, u.firstName, u.lastName, p.postType, po.pollId, po.choice1, po.choice2 " +
+            "from post p join user u on p.userId = u.userId left join poll po on po.postId = p.postId " +
+            "where (p.userId = ? or exists (select 1 from follow f where f.followerUserId = ? and f.followeeUserId = p.userId)) " +
+            "order by p.postDate desc";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            /*
+             * Both placeholders use the logged-in user's ID:
+             * one checks the user's own posts and the other
+             * checks their follow relationships.
+             */
+            pstmt.setString(1, loggedInUserId);
+            pstmt.setString(2, loggedInUserId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+
+                while (rs.next()) {
+                    // Adds a Poll or a normal Post depending on postType.
+                    posts.add(buildPost(rs));
+                }
+            }
+        }
+
+        return posts;
+    }
+
+    /**
+     * Retrieves the posts a user has bookmarked, newest post first.
+     * Used by the /bookmarks page.
+     */
+    public List<Post> getBookmarkedPosts(String userId) throws SQLException {
+
+        List<Post> posts = new ArrayList<>();
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from bookmark b join post p on b.postId = p.postId join user u on p.userId = u.userId " +
+                "left join poll on poll.postId = p.postId " +
+                "where b.userId = ? order by p.postDate desc";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    posts.add(buildPost(rs));
+                }
+            }
+        }
+
+        return posts;
+    }
+
+    /**
+     * Retrieves a single post (or poll) together with all of its comments.
+     * Used by the /post/{postId} page.
+     *
+     * @param postId ID of the post
+     * @return an ExpandedPost or ExpandedPoll, or null if no such post exists
+     * @throws SQLException if the database query fails
+     */
+    public Post getExpandedPost(String postId) throws SQLException {
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId " +
+                "where p.postId = ?";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, postId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    List<Comment> comments = commentService.getComments(postId);
+                    return buildPost(rs, comments);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     */
+    private Post buildPost(ResultSet rs) throws SQLException {
+        return buildPost(rs, null);
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     *
+     */
+    private Post buildPost(ResultSet rs, List<Comment> comments) throws SQLException {
+
+        User user = new User(rs.getString("userId"), rs.getString("firstName"), rs.getString("lastName"));
+
+        String postId = rs.getString("postId");
+        String content = rs.getString("content");
+        String postDate = formatPostDate(rs.getTimestamp("postDate"));
+
+        int heartsCount = heartService.getHeartCount(postId);
+        int commentsCount = commentService.getCommentCount(postId);
+        boolean isHearted = heartService.isHearted(postId);
+        boolean isBookmarked = bookmarkService.isBookmarked(postId);
+
+        if ("POLL".equals(rs.getString("postType"))) {
+            String pollId = rs.getString("pollId");
+            String choice1 = rs.getString("choice1");
+            String choice2 = rs.getString("choice2");
+            int totalVotes = pollService.getTotalVotes(pollId);
+            int choice1Votes = pollService.getChoice1Votes(pollId);
+            int choice2Votes = pollService.getChoice2Votes(pollId);
+            boolean hasVoted = pollService.getHasVoted(pollId);
+
+            if (comments != null) {
+                return new ExpandedPoll(pollId, postId, content, choice1, choice2, postDate,
+                        heartsCount, commentsCount, isHearted, isBookmarked,
+                        user, totalVotes, choice1Votes, choice2Votes, hasVoted, comments);
+            }
+
+            return new Poll(pollId, postId, content, choice1, choice2, postDate,
+                    heartsCount, commentsCount, isHearted, isBookmarked,
+                    user, totalVotes, choice1Votes, choice2Votes, hasVoted);
+        }
+
+        if (comments != null) {
+            return new ExpandedPost(postId, content, postDate, user,
+                    heartsCount, commentsCount, isHearted, isBookmarked, comments);
+        }
+
+        return new Post(postId, content, postDate, user,
+                heartsCount, commentsCount, isHearted, isBookmarked);
+    }
+}

@@ -7,7 +7,6 @@ package uga.menik.csx370.controllers;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +16,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
-
+import java.sql.SQLException;
 import uga.menik.csx370.models.FollowableUser;
 import uga.menik.csx370.services.PeopleService;
 import uga.menik.csx370.services.UserService;
-import uga.menik.csx370.utility.Utility;
 
 /**
  * Handles /people URL and its sub URL paths.
@@ -35,13 +33,12 @@ public class PeopleController {
     // Hint: Add a constructor with @Autowired annotation.
     private final UserService userService;
     private final PeopleService peopleService;
-    
+
     @Autowired
     public PeopleController(UserService userService, PeopleService peopleService) {
         this.userService = userService;
         this.peopleService = peopleService;
     }
-
 
     /**
      * Serves the /people web page.
@@ -51,7 +48,7 @@ public class PeopleController {
      * See notes in HashtagSearchController.java regarding URL parameters.
      */
     @GetMapping
-    public ModelAndView webpage(@RequestParam(name = "error", required = false) String error) {
+    public ModelAndView webpage(@RequestParam(name = "error", required = false) String error) throws SQLException {
         // See notes on ModelAndView in BookmarksController.java.
         ModelAndView mv = new ModelAndView("people_page");
 
@@ -59,15 +56,19 @@ public class PeopleController {
         // You should replace it with actual data from the database.
         // Use the PeopleService instance to find followable users.
         // Use UserService to access logged in userId to exclude.
-        try { 
-            String userIdToExclude = userService.getLoggedInUser().getUserId();
-            List<FollowableUser> followableUsers = peopleService.getFollowableUsers(userIdToExclude);
+        
+        try {
+            String userId = userService.getLoggedInUser().getUserId();
+            List<FollowableUser> followableUsers = peopleService.getFollowableUsers(userId);
             mv.addObject("users", followableUsers);
-        } catch(SQLException sqlerror) {
-            String errorMessage = sqlerror.toString();
-            mv.addObject("errorMessage", errorMessage);
-        };
+        } catch (SQLException sqlError) {
 
+            // If an error occured, you can set the following property with the
+            // error message to show the error message to the user.
+            // An error message can be optionally specified with a url query parameter too.
+            String errorMessage = sqlError.toString();
+            mv.addObject("errorMessage", errorMessage);
+        }
 
         // Enable the following line if you want to show no content message.
         // Do that if your content list is empty.
@@ -89,17 +90,26 @@ public class PeopleController {
     @GetMapping("{userId}/follow/{isFollow}")
     public String followUnfollowUser(@PathVariable("userId") String userId,
             @PathVariable("isFollow") Boolean isFollow) {
-        System.out.println("User is attempting to follow/unfollow a user:");
-        System.out.println("\tuserId: " + userId);
-        System.out.println("\tisFollow: " + isFollow);
+        try {
+            String loggedInUserId = userService.getLoggedInUser().getUserId();
 
-        // Redirect the user if the comment adding is a success.
-        // return "redirect:/people";
+            if (isFollow) {
+                peopleService.followUser(loggedInUserId, userId);
+            } else {
+                peopleService.unfollowUser(loggedInUserId, userId);
+            }
 
-        // Redirect the user with an error message if there was an error.
-        String message = URLEncoder.encode("Failed to (un)follow the user. Please try again.",
-                StandardCharsets.UTF_8);
-        return "redirect:/people?error=" + message;
+            return "redirect:/people";
+        } catch (SQLException | IllegalArgumentException e) {
+            e.printStackTrace();
+            // Redirect the user if the comment adding is a success.
+            // return "redirect:/people";
+
+            // Redirect the user with an error message if there was an error.
+            String message = URLEncoder.encode("Failed to (un)follow the user. Please try again.",
+                    StandardCharsets.UTF_8);
+            return "redirect:/people?error=" + message;
+        }    
     }
 
 }
