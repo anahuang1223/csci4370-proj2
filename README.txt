@@ -10,7 +10,7 @@ Group ID: 6
 - Leanne Wong
 
 
-### Setup (same instructions as those given in the Project 2 page):
+### Setup (same setup instructions as those given in the Project 2 page of ELC):
 1. Create the database using the given database_setup.sql file.
 2. After the initial database setup, you can run the starter code using the commands:
 
@@ -24,6 +24,7 @@ Group ID: 6
         mvn spring-boot:run --% -Dspring-boot.run.arguments="--server.port=8081"
 
 3. Open browser and navigate to the following URL: http://localhost:8081/
+4. Log in with one of the users from the database_setup.sql. Login using a username and password (all of the passwords on the list are:   password)
 
 
 ### Contributions:
@@ -39,29 +40,29 @@ Group ID: 6
 # Description:
 - On the homepage, users can press a button to either create a Post (normal post) or a Poll. 
 - Polls are composed of one question, and 2 possible answer choices.
-- If the current user has not voted on a specific poll, it will show the poll without the voting results (will show how total votes, but not which choice is winning)
-- If the current user has voted on a specific poll, then the poll will display the total votes for each choice.
+- If the current user has not voted on a specific poll, it will show the poll without the voting results (will show how many total votes there are, but not which choice is winning)
+- If the current user has voted on a specific poll, then the poll will display the number votes for each choice.
     - The current user can remove their vote from the poll by selecting the same choice again
     - The current user can change their vote for the poll by selecting a different choice 
 - Polls will appear in the same places Posts appear. Polls can have # hashtags in the "question", and can be searched via those hashtags
-- Polls will also have the same functionalities as Posts (likes, bookmarks, and comments)
+- Polls also have the same functionalities as Posts (likes, bookmarks, and comments)
 
 
 # Where to find:
-- UI (under resources/templates/fragments): I created/modified the following files:
+- UI (under resources/templates/fragments): I created/modified the following files for the poll implementation:
     - home_page.mustache: edited home_page for the "Create Poll" and "Create Post" buttons
-    - new_poll_form.mustache, new_post_form.mustache: Form Popup windows
-    - post.mustache: Allow polls to show up as posts by adding the #isPoll condition; Allow users to see if they've voted on a poll before with the hasVoted condition
+    - new_poll_form.mustache, new_post_form.mustache: Form Popup windows for creating a new post and poll.
+    - post.mustache: Allow polls to show up as posts by adding the #isPoll condition; Allow users to see voting results if they've voted on a poll before with the #hasVoted condition
     - style.css: all the things under "Poll stuff" comment, but basically added poll-choices buttons and Modals for the "create new poll/post form"
-- Models: Poll.java, PollVote.java
+- Models: Poll.java, ExpandedPoll.java (similar to ExpandedPost.java to allow comments on polls)
 - Controller: PollController.java (poll creation and voting mappings)
 - Service: PollService.java (poll creation and poll voting)
-- Other Services (minor changes): PostService.java, HashtagService.java (for rendering the polls on the home, profile, hashtagsearch feeds)
-- SQL/Schema: Under table names "poll" and "pollvote"
+- Other Services: PostService.java, HashtagService.java (for rendering the polls in-line with normal posts on the home, profile, bookmarks, and hashtagsearch feeds)
+- SQL/Schema additions: Under table names "poll" and "pollvote"
 
 
 
-### External Resources:
+### External Resources Used:
 https://mustache.github.io/mustache.5.html#Inverted-Sections
 https://stackoverflow.com/questions/8548943/how-to-handle-an-if-statement-in-a-mustache-template/27680634#27680634
 https://csci4300-web-programming.github.io/UGA-WebDAWGS-Docs-Pages/docs/category/css

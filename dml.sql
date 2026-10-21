@@ -91,8 +91,8 @@ insert into post(userId, content, postType) values (?, ?, 'POLL');
 insert into poll(postId, question, choice1, choice2) values (?, ?, ?, ?);
 
 
--- Inserts a new pollvote into the pollvote table. Executes when user votes on a poll (clicks on one of the choice buttons)
--- http://localhost:8081/
+-- Inserts a new pollvote into the pollvote table. Executes whenever user votes on a poll (clicks on one of the choice buttons)
+-- http://localhost:8081/, http://localhost:8081/profile, http://localhost:8081/bookmarks
 insert into pollvote (pollId, userId, choice) values (?, ?, ?);
 
 
