@@ -249,6 +249,7 @@ public class PostService {
                 "p.postId, " +
                 "p.content, " +
                 "p.postDate, " +
+                "p.postType, " +
                 "u.userId, " +
                 "u.firstName, " +
                 "u.lastName " +
