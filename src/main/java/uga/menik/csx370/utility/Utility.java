@@ -30,8 +30,6 @@ public class Utility {
         User user1 = new User("1", "John", "Doe");
         User user2 = new User("2", "Jane", "Doe");
         User user3 = new User("3", "Alice", "Smith");
-        User user4 = new User("4", "Bob", "Brown");
-        User user5 = new User("5", "Charlie", "Green");
         List<Post> postsWithoutComments = new ArrayList<>();
         postsWithoutComments.add(new Post("1", "Exploring Spring Boot features",
                 "Mar 07, 2026, 10:54 PM", user1, 10, 4, false, false));
@@ -45,7 +43,6 @@ public class Utility {
     public static List<ExpandedPost> createSampleExpandedPostWithComments() {
         User user1 = new User("1", "John", "Doe");
         User user2 = new User("2", "Jane", "Doe");
-        User user3 = new User("3", "Alice", "Smith");
         User user4 = new User("4", "Bob", "Brown");
         User user5 = new User("5", "Charlie", "Green");
         List<Comment> commentsForPost = new ArrayList<>();
@@ -66,23 +63,21 @@ public class Utility {
     public static List<Post> createSamplePollsListWithoutComments() {
         User user1 = new User("1", "Ryu", "Naruhodo");
         User user2 = new User("2", "Susie", "Mikotoba");
-        User user3 = new User("3", "Herlock", "Sholmes");
         User user4 = new User("4", "Iris", "Watson");
-        User user5 = new User("5", "Theodore", "Roosevelt");
         List<Post> pollsWithoutComments = new ArrayList<>();
         // String pollId, String postId, String content, String choice1, String choice2, String postDate, 
         //       int heartsCount, int commentsCount, boolean isHearted, boolean isBookmarked, User user, int voteCount
         pollsWithoutComments.add(new Poll("1", "11", "Is it a spade or a shovel?", 
-                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 0, 0, false, false, user1, 0));
+                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 0, 0, false, false, user1, 0, 0, 0,false));
         
         pollsWithoutComments.add(new Post("2", "Exploring Spring Boot features",
                 "Mar 07, 2026, 10:54 PM", user1, 10, 4, false, false));
 
         pollsWithoutComments.add(new Poll("3", "12", "Its definitely a shovel, right?", 
-                "Yes, it's a shovel", "No, it's a spade", "Oct 15, 2026, 10:18 AM", 0, 0, false, false, user2, 0));
+                "Yes, it's a shovel", "No, it's a spade", "Oct 15, 2026, 10:18 AM", 0, 0, false, false, user2, 0, 0, 0, false));
         
         pollsWithoutComments.add(new Poll("4", "13", "Is [SPOILERS] my dad?", 
-                "Yes", "No", "Oct 16, 2026, 8:23 PM", 0, 0, false, false, user4, 0));
+                "Yes", "No", "Oct 16, 2026, 8:23 PM", 0, 0, false, false, user4, 0, 0, 0, false));
         
 
 
@@ -96,7 +91,6 @@ public class Utility {
         User user2 = new User("2", "Susie", "Mikotoba");
         User user3 = new User("3", "Herlock", "Sholmes");
         User user4 = new User("4", "Iris", "Watson");
-        User user5 = new User("5", "Theodore", "Roosevelt");
 
 
         List<Comment> commentsForPoll = new ArrayList<>();
@@ -107,10 +101,11 @@ public class Utility {
         commentsForPoll.add(new Comment("3", "Isn't obvious?", 
             "Mar 09, 2026, 09:30 AM", user4));
         
-
+        
         List<ExpandedPoll> pollsWithComments = new ArrayList<>();
-        pollsWithComments.add(new ExpandedPoll("2", "11", "Is it a spade or a shovel?", 
-                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 0, 0, false, false, user1, 0, commentsForPoll));
+        pollsWithComments.add(new ExpandedPoll("20", "15", "Is it a spade or a shovel?", 
+                "Spade", "Shovel", "Oct 15, 2026, 10:15 AM", 
+                0, 0, false, false, user1, 0, 0, 0, false, commentsForPoll));
         
         
         return pollsWithComments;

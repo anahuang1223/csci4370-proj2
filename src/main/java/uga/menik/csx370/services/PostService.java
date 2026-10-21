@@ -22,6 +22,10 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import uga.menik.csx370.models.Comment;
+import uga.menik.csx370.models.ExpandedPoll;
+import uga.menik.csx370.models.ExpandedPost;
+import uga.menik.csx370.models.Poll;
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.models.User;
 
@@ -29,48 +33,46 @@ import uga.menik.csx370.models.User;
  * This service contains database operations related to posts.
  *
  * It handles creating normal posts, storing hashtags, retrieving
- * posts for profile pages, and retrieving posts for the home feed.
+ * posts for profile pages, the home feed, the bookmarks page, and
+ * a single post's page .
  */
 @Service
 public class PostService {
 
     private final DataSource dataSource;
     private final UserService userService;
+    private final PollService pollService;
+    private final HeartService heartService;
+    private final CommentService commentService;
+    private final BookmarkService bookmarkService;
 
     /**
      * Creates a PostService using the application's database connection
-     * source and UserService.
+     * source and the services it needs to fill in each post's details.
      *
-     * @param dataSource database connection source
-     * @param userService service used to access the logged-in user
      */
     @Autowired
-    public PostService(
-            DataSource dataSource,
-            UserService userService) {
+    public PostService(DataSource dataSource, UserService userService, PollService pollService,
+            HeartService heartService, CommentService commentService, BookmarkService bookmarkService) {
 
         this.dataSource = dataSource;
         this.userService = userService;
+        this.pollService = pollService;
+        this.heartService = heartService;
+        this.commentService = commentService;
+        this.bookmarkService = bookmarkService;
     }
 
     /**
-     * Creates a normal post for the currently logged-in user.
-     *
-     * The post and its hashtag relationships are created in the same
-     * transaction. This prevents a post from being partially stored if
-     * one of the hashtag database operations fails.
-     *
-     * @param content the text content of the post
-     * @return true if the post was successfully created
-     * @throws SQLException if a database operation fails
+     * Creates a normal post for the currently logged-in user. Hashtags
+     * are extracted and added to database if present.
      */
-    public boolean createPost(String content)
-            throws SQLException {
+    public boolean createPost(String content) throws SQLException {
 
-        // Obtain the user who is currently logged in.
+
         User user = userService.getLoggedInUser();
 
-        // A post cannot be created if there is no logged-in user.
+
         if (user == null) {
             return false;
         }
@@ -83,47 +85,24 @@ public class PostService {
             return false;
         }
 
-        // Find all unique hashtags contained in the post.
-        Set<String> hashtags =
-                extractHashtags(trimmedContent);
+        Set<String> hashtags = extractHashtags(trimmedContent);
 
-        final String postSql =
-                "insert into post(userId, content, postType) " +
-                "values (?, ?, 'NORMAL')";
+        final String postSql = "insert into post(userId, content, postType) values (?, ?, 'NORMAL')";
 
-        try (Connection conn =
-                dataSource.getConnection()) {
+        try (Connection conn = dataSource.getConnection()) {
 
-            /*
-             * Disable auto-commit so the post and its hashtag
-             * relationships can be treated as one transaction.
-             */
             conn.setAutoCommit(false);
 
             try {
 
                 int postId;
 
-                /*
-                 * Insert the post and request its automatically
-                 * generated postId. The postId is needed when
-                 * creating entries in postHashtag.
-                 */
-                try (PreparedStatement postStmt =
-                        conn.prepareStatement(
-                                postSql,
-                                Statement.RETURN_GENERATED_KEYS)) {
+                try (PreparedStatement postStmt = conn.prepareStatement(postSql, Statement.RETURN_GENERATED_KEYS)) {
 
-                    postStmt.setString(
-                            1,
-                            user.getUserId());
+                    postStmt.setString(1, user.getUserId());
+                    postStmt.setString(2,trimmedContent);
 
-                    postStmt.setString(
-                            2,
-                            trimmedContent);
-
-                    int rowsAffected =
-                            postStmt.executeUpdate();
+                    int rowsAffected = postStmt.executeUpdate();
 
                     // The insert failed if no rows were affected.
                     if (rowsAffected == 0) {
@@ -131,12 +110,7 @@ public class PostService {
                         return false;
                     }
 
-                    /*
-                     * Retrieve the postId generated by MySQL for
-                     * the newly-created post.
-                     */
-                    try (ResultSet rs =
-                            postStmt.getGeneratedKeys()) {
+                    try (ResultSet rs = postStmt.getGeneratedKeys()) {
 
                         if (!rs.next()) {
                             conn.rollback();
@@ -147,90 +121,45 @@ public class PostService {
                     }
                 }
 
-                /*
-                 * Store each hashtag if necessary and create
-                 * the many-to-many relationship between the
-                 * post and the hashtag.
-                 */
                 for (String hashtag : hashtags) {
-
-                    int hashtagId =
-                            getOrCreateHashtag(
-                                    conn,
-                                    hashtag);
-
-                    linkPostToHashtag(
-                            conn,
-                            postId,
-                            hashtagId);
+                    int hashtagId = getOrCreateHashtag(conn, hashtag);
+                    linkPostToHashtag(conn, postId, hashtagId);
                 }
 
-                // All database operations succeeded.
                 conn.commit();
 
                 return true;
 
             } catch (SQLException e) {
-
-                /*
-                 * Undo the post and hashtag changes if any
-                 * database operation in the transaction fails.
-                 */
                 conn.rollback();
-
                 throw e;
 
             } finally {
 
-                // Restore the connection's normal auto-commit setting.
                 conn.setAutoCommit(true);
             }
         }
     }
 
     /**
-     * Gets the ID for a hashtag. If the hashtag does not already
-     * exist in the hashtag table, it is inserted first.
-     *
-     * The hashtag column is unique, so duplicate hashtags should
-     * reuse the existing hashtag record rather than creating a
-     * duplicate.
-     *
-     * @param conn active database connection
-     * @param hashtag hashtag text without the # symbol
-     * @return the ID of the hashtag
-     * @throws SQLException if the database operation fails
-     */
-    private int getOrCreateHashtag(
-            Connection conn,
-            String hashtag)
+     * Gets the ID for a hashtag. If the hashtag does not already exist in the hashtag table, it is inserted first.
+     **/
+    private int getOrCreateHashtag(Connection conn, String hashtag)
             throws SQLException {
 
         /*
-         * If the hashtag already exists, LAST_INSERT_ID is set
-         * to its existing hashtagId. This allows the same code
-         * to retrieve an ID for both new and existing hashtags.
+         * If the hashtag already exists, LAST_INSERT_ID is set to its existing hashtagId. 
          */
-        final String sql =
-                "insert into hashtag(hashtag) " +
-                "values (?) " +
-                "on duplicate key update " +
-                "hashtagId = last_insert_id(hashtagId)";
+        final String sql = "insert into hashtag(hashtag) values (?) on duplicate key update hashtagId = last_insert_id(hashtagId)";
 
-        try (PreparedStatement pstmt =
-                conn.prepareStatement(
-                        sql,
-                        Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            pstmt.setString(
-                    1,
-                    hashtag);
+            pstmt.setString(1, hashtag);
 
             pstmt.executeUpdate();
 
             // Retrieve the new or existing hashtagId.
-            try (ResultSet rs =
-                    pstmt.getGeneratedKeys()) {
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
 
                 if (rs.next()) {
                     return rs.getInt(1);
@@ -238,178 +167,64 @@ public class PostService {
             }
         }
 
-        throw new SQLException(
-                "Failed to get hashtagId.");
+        throw new SQLException("Failed to get hashtagId.");
     }
 
     /**
      * Creates the relationship between a post and one of its hashtags.
-     *
-     * @param conn active database connection
-     * @param postId ID of the post
-     * @param hashtagId ID of the hashtag
-     * @throws SQLException if the database operation fails
      */
-    private void linkPostToHashtag(
-            Connection conn,
-            int postId,
-            int hashtagId)
-            throws SQLException {
+    private void linkPostToHashtag(Connection conn, int postId, int hashtagId) throws SQLException {
 
-        final String sql =
-                "insert into postHashtag(postId, hashtagId) " +
-                "values (?, ?)";
+        final String sql = "insert into postHashtag(postId, hashtagId) values (?, ?)";
 
-        try (PreparedStatement pstmt =
-                conn.prepareStatement(sql)) {
-
-            pstmt.setInt(
-                    1,
-                    postId);
-
-            pstmt.setInt(
-                    2,
-                    hashtagId);
-
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, postId);
+            pstmt.setInt(2, hashtagId);
             pstmt.executeUpdate();
         }
     }
 
     /**
      * Extracts the unique hashtags contained in a post.
-     *
-     * Hashtags may contain letters, numbers, and underscores.
-     * They are converted to lowercase so tags such as #Java
-     * and #java are stored as the same hashtag.
-     *
-     * @param content post content to search
-     * @return set containing the hashtags without the # symbol
      */
-    private Set<String> extractHashtags(
-            String content) {
+    private Set<String> extractHashtags(String content) {
 
-        Set<String> hashtags =
-                new HashSet<>();
-
-        Pattern pattern =
-                Pattern.compile(
-                        "#([A-Za-z0-9_]+)");
-
-        Matcher matcher =
-                pattern.matcher(content);
-
+        Set<String> hashtags = new HashSet<>();
+        Pattern pattern =Pattern.compile("#([A-Za-z0-9_]+)");
+        Matcher matcher = pattern.matcher(content);
         while (matcher.find()) {
-
-            hashtags.add(
-                    matcher.group(1).toLowerCase());
+            hashtags.add(matcher.group(1).toLowerCase());
         }
-
         return hashtags;
     }
 
     /**
      * Converts a database timestamp into the date format displayed
      * by the microblogging interface.
-     *
-     * Example:
-     * Oct 16, 2026, 06:38 AM
-     *
-     * @param timestamp timestamp stored for the post
-     * @return formatted post date
      */
-    private String formatPostDate(
-            Timestamp timestamp) {
+    private String formatPostDate(Timestamp timestamp) {
+        DateTimeFormatter formatter =DateTimeFormatter.ofPattern("MMM dd, yyyy, hh:mm a");
 
-        DateTimeFormatter formatter =
-                DateTimeFormatter.ofPattern(
-                        "MMM dd, yyyy, hh:mm a");
-
-        return timestamp
-                .toLocalDateTime()
-                .format(formatter);
+        return timestamp.toLocalDateTime().format(formatter);
     }
 
     /**
-     * Retrieves all normal posts created by a specific user.
-     *
-     * This method is used by profile pages. Posts are returned
-     * from newest to oldest.
-     *
-     * @param userId ID of the user whose posts should be retrieved
-     * @return list of the user's posts
-     * @throws SQLException if the database query fails
+     * Retrieves all posts created by a specific user on that user's profile.
      */
-    public List<Post> getPostsByUser(
-            String userId)
-            throws SQLException {
+    public List<Post> getPostsByUser(String userId) throws SQLException {
 
-        List<Post> posts =
-                new ArrayList<>();
+        List<Post> posts = new ArrayList<>();
 
-        /*
-         * Join post and user so each Post object contains both
-         * the post information and information about its author.
-         */
-        final String sql =
-                "select " +
-                "p.postId, " +
-                "p.content, " +
-                "p.postDate, " +
-                "u.userId, " +
-                "u.firstName, " +
-                "u.lastName " +
-                "from post p " +
-                "join user u on p.userId = u.userId " +
-                "where p.userId = ? " +
-                "and p.postType = 'NORMAL' " +
-                "order by p.postDate desc";
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId where p.userId = ? order by p.postDate desc";
 
-        try (Connection conn =
-                dataSource.getConnection();
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-             PreparedStatement pstmt =
-                conn.prepareStatement(sql)) {
+            pstmt.setString(1, userId);
 
-            pstmt.setString(
-                    1,
-                    userId);
-
-            try (ResultSet rs =
-                    pstmt.executeQuery()) {
-
-                /*
-                 * Convert each database row into the User and
-                 * Post model objects expected by the templates.
-                 */
+            try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-
-                    User user =
-                            new User(
-                                    rs.getString("userId"),
-                                    rs.getString("firstName"),
-                                    rs.getString("lastName")
-                            );
-
-                    /*
-                     * Likes, comments, and bookmarks are initialized
-                     * with default values here because those features
-                     * are handled separately.
-                     */
-                    Post post =
-                            new Post(
-                                    rs.getString("postId"),
-                                    rs.getString("content"),
-                                    formatPostDate(
-                                            rs.getTimestamp(
-                                                    "postDate")),
-                                    user,
-                                    0,
-                                    0,
-                                    false,
-                                    false
-                            );
-
-                    posts.add(post);
+                    posts.add(buildPost(rs));
                 }
             }
         }
@@ -418,25 +233,11 @@ public class PostService {
     }
 
     /**
-     * Retrieves the posts that should appear in the logged-in
-     * user's home feed.
-     *
-     * The feed contains:
-     * - posts created by the logged-in user
-     * - posts created by users that the logged-in user follows
-     *
-     * Posts are returned from newest to oldest.
-     *
-     * @param loggedInUserId ID of the logged-in user
-     * @return list of posts for the user's home feed
-     * @throws SQLException if the database query fails
+     * Retrieves the posts that should appear in the logged-in user's home feed
      */
-    public List<Post> getHomeFeed(
-            String loggedInUserId)
-            throws SQLException {
+    public List<Post> getHomeFeed(String loggedInUserId) throws SQLException {
 
-        List<Post> posts =
-                new ArrayList<>();
+        List<Post> posts = new ArrayList<>();
 
         /*
          * A post belongs in the home feed if its author is the
@@ -465,56 +266,134 @@ public class PostService {
                 "and p.postType = 'NORMAL' " +
                 "order by p.postDate desc";
 
-        try (Connection conn =
-                dataSource.getConnection();
-
-             PreparedStatement pstmt =
-                conn.prepareStatement(sql)) {
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             /*
              * Both placeholders use the logged-in user's ID:
              * one checks the user's own posts and the other
              * checks their follow relationships.
              */
-            pstmt.setString(
-                    1,
-                    loggedInUserId);
+            pstmt.setString(1, loggedInUserId);
+            pstmt.setString(2, loggedInUserId);
 
-            pstmt.setString(
-                    2,
-                    loggedInUserId);
-
-            try (ResultSet rs =
-                    pstmt.executeQuery()) {
+            try (ResultSet rs = pstmt.executeQuery()) {
 
                 while (rs.next()) {
-
-                    User user =
-                            new User(
-                                    rs.getString("userId"),
-                                    rs.getString("firstName"),
-                                    rs.getString("lastName")
-                            );
-
-                    Post post =
-                            new Post(
-                                    rs.getString("postId"),
-                                    rs.getString("content"),
-                                    formatPostDate(
-                                            rs.getTimestamp(
-                                                    "postDate")),
-                                    user,
-                                    0,
-                                    0,
-                                    false,
-                                    false
-                            );
-
-                    posts.add(post);
+                    // Adds a Poll or a normal Post depending on postType.
+                    posts.add(buildPost(rs));
                 }
             }
         }
 
         return posts;
+    }
+
+    /**
+     * Retrieves the posts a user has bookmarked, newest post first.
+     * Used by the /bookmarks page.
+     */
+    public List<Post> getBookmarkedPosts(String userId) throws SQLException {
+
+        List<Post> posts = new ArrayList<>();
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from bookmark b join post p on b.postId = p.postId join user u on p.userId = u.userId " +
+                "left join poll on poll.postId = p.postId " +
+                "where b.userId = ? order by p.postDate desc";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    posts.add(buildPost(rs));
+                }
+            }
+        }
+
+        return posts;
+    }
+
+    /**
+     * Retrieves a single post (or poll) together with all of its comments.
+     * Used by the /post/{postId} page.
+     *
+     * @param postId ID of the post
+     * @return an ExpandedPost or ExpandedPoll, or null if no such post exists
+     * @throws SQLException if the database query fails
+     */
+    public Post getExpandedPost(String postId) throws SQLException {
+
+        final String sql = "select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 " +
+                "from post p join user u on p.userId = u.userId left join poll on poll.postId = p.postId " +
+                "where p.postId = ?";
+
+        try (Connection conn = dataSource.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, postId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    List<Comment> comments = commentService.getComments(postId);
+                    return buildPost(rs, comments);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     */
+    private Post buildPost(ResultSet rs) throws SQLException {
+        return buildPost(rs, null);
+    }
+
+    /**
+     * Converts the current row of a post query into a Post or a Poll.
+     *
+     */
+    private Post buildPost(ResultSet rs, List<Comment> comments) throws SQLException {
+
+        User user = new User(rs.getString("userId"), rs.getString("firstName"), rs.getString("lastName"));
+
+        String postId = rs.getString("postId");
+        String content = rs.getString("content");
+        String postDate = formatPostDate(rs.getTimestamp("postDate"));
+
+        int heartsCount = heartService.getHeartCount(postId);
+        int commentsCount = commentService.getCommentCount(postId);
+        boolean isHearted = heartService.isHearted(postId);
+        boolean isBookmarked = bookmarkService.isBookmarked(postId);
+
+        if ("POLL".equals(rs.getString("postType"))) {
+            String pollId = rs.getString("pollId");
+            String choice1 = rs.getString("choice1");
+            String choice2 = rs.getString("choice2");
+            int totalVotes = pollService.getTotalVotes(pollId);
+            int choice1Votes = pollService.getChoice1Votes(pollId);
+            int choice2Votes = pollService.getChoice2Votes(pollId);
+            boolean hasVoted = pollService.getHasVoted(pollId);
+
+            if (comments != null) {
+                return new ExpandedPoll(pollId, postId, content, choice1, choice2, postDate,
+                        heartsCount, commentsCount, isHearted, isBookmarked,
+                        user, totalVotes, choice1Votes, choice2Votes, hasVoted, comments);
+            }
+
+            return new Poll(pollId, postId, content, choice1, choice2, postDate,
+                    heartsCount, commentsCount, isHearted, isBookmarked,
+                    user, totalVotes, choice1Votes, choice2Votes, hasVoted);
+        }
+
+        if (comments != null) {
+            return new ExpandedPost(postId, content, postDate, user,
+                    heartsCount, commentsCount, isHearted, isBookmarked, comments);
+        }
+
+        return new Post(postId, content, postDate, user,
+                heartsCount, commentsCount, isHearted, isBookmarked);
     }
 }

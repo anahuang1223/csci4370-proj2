@@ -6,18 +6,14 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.services.PollService;
 
 
 /**
- * Handles /polls URL.
+ * Poll controller handles all poll and vote mappings.
  */
 @Controller
 public class PollController {
@@ -27,6 +23,7 @@ public class PollController {
         this.pollService = pollService;
     }
 
+    // Handles /createpoll functionality
     @PostMapping("/createpoll")
     public String createPoll(
         @RequestParam("question") String question,
@@ -40,7 +37,7 @@ public class PollController {
             try {
                 boolean poll = pollService.createPoll(question, choice1, choice2);
                 if (!poll) {
-                    return "redirect:/?error=Please%20log%20in%20first";
+                    throw new SQLException();
                 }
                 
             } catch (SQLException error) {
@@ -50,5 +47,52 @@ public class PollController {
             }
             
             return "redirect:/";
-        }
+    }
+
+    // Handles /vote functionality
+    @PostMapping("/vote")
+    public String createVote(
+        @RequestParam("pollId") String pollId,
+        @RequestParam("choice") String choice) {
+        
+            System.out.println("User is voting on a poll with pollId: " + pollId);
+
+            try {
+                boolean poll = pollService.createVote(pollId, choice);
+                if (!poll) {
+                    throw new SQLException();
+                }
+                
+            } catch (SQLException error) {
+                String message = URLEncoder.encode("Failed to vote on poll. Please try again.",
+                StandardCharsets.UTF_8);
+                return "redirect:/?error=" + message;
+            }
+            
+            return "redirect:/";
+    }
+
+    // Handles /vote functionality
+    @PostMapping("/changevote")
+    public String updateVote(
+        @RequestParam("pollId") String pollId,
+        @RequestParam("choice") String choice) {
+        
+            System.out.println("User changing their vote on a poll with pollId: " + pollId);
+
+            try {
+                boolean poll = pollService.updateVote(pollId, choice);
+                if (!poll) {
+                    throw new SQLException();
+                }
+                
+            } catch (SQLException error) {
+                String message = URLEncoder.encode("Failed to change vote on poll. Please try again.",
+                StandardCharsets.UTF_8);
+                return "redirect:/?error=" + message;
+            }
+            
+            return "redirect:/";
+    }
+
 }
