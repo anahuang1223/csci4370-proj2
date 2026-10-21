@@ -458,8 +458,8 @@ public class PostService {
                 "    or exists (" +
                 "        select 1 " +
                 "        from follow f " +
-                "        where f.followerId = ? " +
-                "        and f.followedId = p.userId" +
+                "        where f.followerUserId = ? " +
+                "        and f.followeeUserId = p.userId" +
                 "    )" +
                 ") " +
                 "and p.postType = 'NORMAL' " +
