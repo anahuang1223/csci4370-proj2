@@ -20,7 +20,6 @@ import org.springframework.web.servlet.ModelAndView;
 
 import uga.menik.csx370.models.Post;
 import uga.menik.csx370.services.PostService;
-import uga.menik.csx370.utility.Utility;
 import uga.menik.csx370.services.UserService;
 
 /**

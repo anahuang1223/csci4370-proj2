@@ -30,8 +30,6 @@ public class Utility {
         User user1 = new User("1", "John", "Doe");
         User user2 = new User("2", "Jane", "Doe");
         User user3 = new User("3", "Alice", "Smith");
-        User user4 = new User("4", "Bob", "Brown");
-        User user5 = new User("5", "Charlie", "Green");
         List<Post> postsWithoutComments = new ArrayList<>();
         postsWithoutComments.add(new Post("1", "Exploring Spring Boot features",
                 "Mar 07, 2026, 10:54 PM", user1, 10, 4, false, false));
@@ -45,7 +43,6 @@ public class Utility {
     public static List<ExpandedPost> createSampleExpandedPostWithComments() {
         User user1 = new User("1", "John", "Doe");
         User user2 = new User("2", "Jane", "Doe");
-        User user3 = new User("3", "Alice", "Smith");
         User user4 = new User("4", "Bob", "Brown");
         User user5 = new User("5", "Charlie", "Green");
         List<Comment> commentsForPost = new ArrayList<>();
@@ -66,9 +63,7 @@ public class Utility {
     public static List<Post> createSamplePollsListWithoutComments() {
         User user1 = new User("1", "Ryu", "Naruhodo");
         User user2 = new User("2", "Susie", "Mikotoba");
-        User user3 = new User("3", "Herlock", "Sholmes");
         User user4 = new User("4", "Iris", "Watson");
-        User user5 = new User("5", "Theodore", "Roosevelt");
         List<Post> pollsWithoutComments = new ArrayList<>();
         // String pollId, String postId, String content, String choice1, String choice2, String postDate, 
         //       int heartsCount, int commentsCount, boolean isHearted, boolean isBookmarked, User user, int voteCount
@@ -96,7 +91,6 @@ public class Utility {
         User user2 = new User("2", "Susie", "Mikotoba");
         User user3 = new User("3", "Herlock", "Sholmes");
         User user4 = new User("4", "Iris", "Watson");
-        User user5 = new User("5", "Theodore", "Roosevelt");
 
 
         List<Comment> commentsForPoll = new ArrayList<>();
