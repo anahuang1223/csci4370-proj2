@@ -34,15 +34,22 @@ public class HashtagService {
     
     private final DataSource dataSource;
     private final PollService pollService;
+    private final HeartService heartService;
+    private final CommentService commentService;
+    private final BookmarkService bookmarkService;
 
     /**
      * See AuthInterceptor notes regarding dependency injection and
      * inversion of control.
      */
     @Autowired
-    public HashtagService(DataSource dataSource, PollService pollService) {
+    public HashtagService(DataSource dataSource, PollService pollService, HeartService heartService,
+            CommentService commentService, BookmarkService bookmarkService) {
         this.dataSource = dataSource;
         this.pollService = pollService;
+        this.heartService = heartService;
+        this.commentService = commentService;
+        this.bookmarkService = bookmarkService;
     }
     
 
@@ -127,6 +134,14 @@ public class HashtagService {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
+
+                    // Likes, comments, and bookmarks for this post (same for posts and polls).
+                    String currentPostId = rs.getString("postId");
+                    int heartsCount = heartService.getHeartCount(currentPostId);
+                    int commentsCount = commentService.getCommentCount(currentPostId);
+                    boolean isHearted = heartService.isHearted(currentPostId);
+                    boolean isBookmarked = bookmarkService.isBookmarked(currentPostId);
+
                     if (rs.getString("postType").equals("POLL")) {
                         System.out.println("Trying to get Poll for hashtag!");
                         String pollId = rs.getString("pollId");
@@ -145,7 +160,8 @@ public class HashtagService {
 
                         boolean hasVoted = pollService.getHasVoted(pollId);
                         
-                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate), 0, 0, false, false,
+                        posts.add(new Poll(pollId, postId, content, choice1, choice2, formatPostDate(postDate),
+                            heartsCount, commentsCount, isHearted, isBookmarked,
                             user, totalVotes, choice1Votes, choice2Votes, hasVoted));
                     } else {
                         System.out.println("Getting a post for hashtag!");
@@ -156,7 +172,8 @@ public class HashtagService {
                         String firstName = rs.getString("firstName");
                         String lastName = rs.getString("lastName");
                         User user = new User(userID, firstName, lastName);
-                        posts.add(new Post(postId, content, formatPostDate(postDate), user, 0, 0, false, false));
+                        posts.add(new Post(postId, content, formatPostDate(postDate), user,
+                            heartsCount, commentsCount, isHearted, isBookmarked));
                     }
                 }
             }

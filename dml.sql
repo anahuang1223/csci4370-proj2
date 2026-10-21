@@ -44,8 +44,7 @@ delete from follow where followerUserId = ? and followeeUserId = ?;
 --------------
 
 -- Finds all posts that contains all the #s in its content. Used when searching hashtags.
--- WILL REPLACE WITH EXAMPLE URL FROM DEMO DATABASE_SETUP:
--- http://localhost:8081/hashtagsearch?hashtags=%23spade
+-- http://localhost:8081/hashtagsearch?hashtags=%23databases
 select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2 
 from post p 
 left join poll on poll.postId = p.postId 
@@ -119,5 +118,83 @@ from post p
 join user u on p.userId = u.userId 
 left join poll po on po.postId = p.postId 
 where (p.userId = ? or exists (             -- current user's userId
-    select 1 from follow f where f.followerId = ? and f.followedId = p.userId))   -- and possibly users that the current user follows
+    select 1 from follow f where f.followerUserId = ? and f.followeeUserId = p.userId))   -- and possibly users that the current user follows
 order by p.postDate desc;
+
+
+-----------------------------------------
+-- Likes (Hearts), Bookmarks, Comments --
+-----------------------------------------
+
+-- Adds a heart (like) from the current user to a post. "ignore" skips it if the user already hearted that post.
+-- http://localhost:8081/post/3/heart/true
+insert ignore into heart (postId, userId) values (?, ?);
+
+
+-- Removes the current user's heart from a post.
+-- http://localhost:8081/post/3/heart/false
+delete from heart where postId = ? and userId = ?;
+
+
+-- Counts the hearts on a post. Runs for every post shown on the home, profile, bookmarks, hashtag search, and post pages.
+-- http://localhost:8081/
+select count(*) as heartCount from heart where postId = ?;
+
+
+-- Checks whether the current user has hearted a post (filled vs. empty heart icon). Runs for every post shown.
+-- http://localhost:8081/
+select 1 from heart where postId = ? and userId = ?;
+
+
+-- Bookmarks a post for the current user. "ignore" skips it if the user already bookmarked that post.
+-- http://localhost:8081/post/3/bookmark/true
+insert ignore into bookmark (postId, userId) values (?, ?);
+
+
+-- Removes a post from the current user's bookmarks.
+-- http://localhost:8081/post/3/bookmark/false
+delete from bookmark where postId = ? and userId = ?;
+
+
+-- Checks whether the current user has bookmarked a post (filled vs. empty bookmark icon). Runs for every post shown.
+-- http://localhost:8081/
+select 1 from bookmark where postId = ? and userId = ?;
+
+
+-- Selects all posts (and polls) the current user has bookmarked, newest first. Executes on the bookmarks page.
+-- http://localhost:8081/bookmarks
+select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2
+from bookmark b
+join post p on b.postId = p.postId
+join user u on p.userId = u.userId
+left join poll on poll.postId = p.postId
+where b.userId = ?          -- current user's userId
+order by p.postDate desc;
+
+
+-- Adds a comment from the current user to a post (commentDate defaults to now). Submitted from the comment box on a post's page.
+-- http://localhost:8081/post/8
+insert into comment (postId, userId, content) values (?, ?, ?);
+
+
+-- Selects all comments on a post with each commenter's name, oldest first. Executes on a post's page.
+-- http://localhost:8081/post/8
+select c.commentId, c.content, c.commentDate, u.userId, u.firstName, u.lastName
+from comment c
+join user u on c.userId = u.userId
+where c.postId = ?
+order by c.commentDate asc, c.commentId asc;
+
+
+-- Counts the comments on a post. Runs for every post shown.
+-- http://localhost:8081/
+select count(*) as commentCount from comment where postId = ?;
+
+
+-- Selects a single post (or poll) by its id. Executes on a post's page, which then loads its comments with the query above.
+-- http://localhost:8081/post/8
+select p.postId, p.content, p.postDate, p.postType, u.userId, u.firstName, u.lastName, poll.pollId, poll.choice1, poll.choice2
+from post p
+join user u on p.userId = u.userId
+left join poll on poll.postId = p.postId
+where p.postId = ?;
