@@ -13,13 +13,30 @@ select * from user where username = ?;
 insert into user (username, password, firstName, lastName) values (?, ?, ?, ?);
 
 
----------------------
--- Followable User --
----------------------
+------------
+-- Follow --
+------------
 
 -- Selects all the users that are not the current user. Used to get a followable users list.
 -- http://localhost:8081/people
-select * from user where userId <> ?;
+
+select u.userId, u.firstName, u.lastName,
+    case when f.followerUserId is not null then true
+        else false end as isFollowee,
+        (select max(p.postDate) from post p where p.userId = u.userId) as lastActiveDate
+from user u
+left join follow f on u.userId = f.followeeUserId and f.followerUserId = ?
+where u.userId != ?;
+
+
+-- Inserts a new follow relationship into follow table. Used when user follows another user.
+-- http://localhost:8081/people
+insert into follow (followerUserId, followeeUserId) values (?, ?);
+
+
+-- Deletes a follow relationship from the follow table. Used when user unfollows a user.
+-- http://localhost:8081/people
+delete from follow where followerUserId = ? and followeeUserId = ?;
 
 
 --------------
